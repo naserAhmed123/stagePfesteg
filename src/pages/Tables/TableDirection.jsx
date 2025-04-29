@@ -3,7 +3,7 @@ import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { useState, useEffect } from 'react';
 
-const Table2 = () => {
+const Tabledirection = () => {
   const [showModal, setShowModal] = useState(false);
   const [reclamations, setReclamations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -11,17 +11,10 @@ const Table2 = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeFilter, setActiveFilter] = useState('all'); 
   const itemsPerPage = 5;
 
-  const [alert, setAlert] = useState({
-    show: false,
-    message: '',
-    type: 'info'
-  });
-
   useEffect(() => {
-    fetchReclamations();
+    fetchReclamations();  // Charge les réclamations au montage du composant
 
     const stompClient = new Client({
       brokerURL: 'ws://localhost:8080/ws',
@@ -56,39 +49,21 @@ const Table2 = () => {
   }, []);
 
   useEffect(() => {
+    // Reset to first page when search term changes
     setCurrentPage(1);
+    // Update total pages based on filtered results
     const filteredItems = getFilteredItems();
     setTotalPages(Math.ceil(filteredItems.length / itemsPerPage));
-  }, [searchTerm, reclamations, activeFilter]);
+  }, [searchTerm, reclamations]);
 
   const fetchReclamations = async () => {
     try {
       setLoading(true);
-      let url = 'http://localhost:8080/reclamations';
-      
-      const response = await fetch(url);
+      const response = await fetch('http://localhost:8080/reclamations');
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      let data = await response.json();
-
-      const now = new Date();
-      data = data.filter((reclamation) => {
-        const reclamationDate = new Date(reclamation.heureReclamation);
-        if (activeFilter === 'today') {
-          return reclamationDate.toDateString() === now.toDateString();
-        } else if (activeFilter === 'week') {
-          const oneWeekAgo = new Date(now);
-          oneWeekAgo.setDate(now.getDate() - 7);
-          return reclamationDate >= oneWeekAgo && reclamationDate <= now;
-        } else if (activeFilter === 'month') {
-          const oneMonthAgo = new Date(now);
-          oneMonthAgo.setMonth(now.getMonth() - 1);
-          return reclamationDate >= oneMonthAgo && reclamationDate <= now;
-        }
-        return true; 
-      });
-
+      const data = await response.json();
       setReclamations(data);
       setTotalPages(Math.ceil(data.length / itemsPerPage));
     } catch (e) {
@@ -98,170 +73,15 @@ const Table2 = () => {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchReclamations();
-  }, [activeFilter]);
-
-  const [formData, setFormData] = useState({
-    reference: "",
-    numClient: "",
-    typePanne: "",
-    genrePanne: "",
-    importance: "",
-    equipeId: "",
-    etat: "PAS_ENCOURS",
-    serviceInterventionId: 10010,
-  });
-
-  const showCustomAlert = (message, type = 'info') => {
-    setAlert({
-      show: true,
-      message,
-      type
-    });
-
-    setTimeout(() => {
-      setAlert(prev => ({ ...prev, show: false }));
-    }, 5000);
-  };
-
-  const toggleModal = () => {
-    setShowModal(!showModal);
-  };
-
-  const handleInputChange = (e) => {
-    const { id, value } = e.target;
-    setFormData({
-      ...formData,
-      [id]: value
-    });
-  };
-
-  const AffecterRue = (ref) => {
-    const refStr = ref.toString();
-
-    if (refStr.length !== 8) {
-      return "cas1";
-    }
-
-    const les5 = parseInt(refStr.substring(0, 5), 10);
-
-    if (les5 > 72806 && les5 < 73392) {
-      return "GREMDA";
-    } else if (les5 > 73432 && les5 < 73588) {
-      return "LAFRANE";
-    } else if (les5 > 73590 && les5 < 73922) {
-      return "ELAIN";
-    } else if (les5 > 73924 && les5 < 74208) {
-      return "MANZEL_CHAKER";
-    } else if (les5 > 74252 && les5 < 74348) {
-      return "MATAR";
-    } else if (les5 > 74386 && les5 < 74405) {
-      return "SOKRA_MHARZA";
-    } else if (les5 > 74406 && les5 < 74700) {
-      return "GABES";
-    }
-    return null;
-  };
-
-  const ValiderNum = (num) => {
-    const numSTR = num.toString();
-
-    if (numSTR.length !== 8) {
-      return "cas1";
-    }
-    const lePremiere = numSTR.charAt(0);
-    if (!['2', '4', '5', '9'].includes(lePremiere)) {
-      return "cas2";
-    }
-    return "Valide";
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!formData.numClient) {
-      showCustomAlert("Le numéro client est obligatoire !", "error");
-      return;
-    }
-
-    if (!formData.typePanne || !formData.genrePanne || !formData.importance) {
-      showCustomAlert("Veuillez remplir tous les champs obligatoires !", "error");
-      return;
-    }
-
-    if (AffecterRue(formData.reference) === null) {
-      showCustomAlert("La référence n'est pas enregistrée ou disponible dans sfax sud", "error");
-      return;
-    }
-    if (AffecterRue(formData.reference) === "cas1") {
-      showCustomAlert("La référence ne contient pas 8 chiffre", "error");
-      return;
-    }
-    if (ValiderNum(formData.numClient) === "cas1") {
-      showCustomAlert("Le numéro de client ne compse pas de 8 numéro ", "error");
-      return;
-    } else if (ValiderNum(formData.numClient) === "cas2") {
-      showCustomAlert("Le numéro de client n'est pas un tunisien numéro ", "error");
-      return;
-    }
-
-    const now = new Date();
-    const formattedDateTime = now.toISOString();
-
-    const payload = {
-      reference: formData.reference,
-      typePanne: formData.typePanne,
-      numClient: parseInt(formData.numClient, 10) || 0,
-      genrePanne: formData.genrePanne,
-      heureReclamation: formattedDateTime,
-      etat: formData.etat,
-      importance: formData.importance,
-      equipeId: parseInt(formData.equipeId, 10) || 1,
-      serviceInterventionId: parseInt(formData.serviceInterventionId, 10) || 10010,
-      rue: AffecterRue(formData.reference)
-    };
-
-    try {
-      const response = await fetch('http://localhost:8080/reclamations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      setFormData({
-        reference: "",
-        numClient: "",
-        typePanne: "",
-        genrePanne: "",
-        importance: "",
-        equipeId: "",
-        etat: "PAS_ENCOURS",
-        serviceInterventionId: 10010
-      });
-
-      await fetchReclamations();
-      toggleModal();
-      showCustomAlert("Réclamation ajoutée avec succès !", "success");
-    } catch (e) {
-      console.error("Erreur lors de l'ajout de la réclamation:", e);
-      showCustomAlert("Erreur lors de l'ajout de la réclamation", "error");
-    }
-  };
-
+    
+  // Fonction pour exporter toutes les réclamations en CSV
   const exportReclamationsToCSV = () => {
     if (reclamations.length === 0) {
-      showCustomAlert("Aucune réclamation à exporter", "warning");
+      alert("Aucune réclamation à exporter");
       return;
     }
 
+    // Créer les en-têtes du CSV
     const headers = [
       "Référence",
       "Importance",
@@ -273,6 +93,7 @@ const Table2 = () => {
       "Équipe"
     ].join(",");
 
+    // Formater les données
     const csvRows = reclamations.map(rec => {
       return [
         rec.reference || "N/A",
@@ -286,29 +107,34 @@ const Table2 = () => {
       ].join(",");
     });
 
+    // Combiner les en-têtes et les lignes
     const csvContent = [headers, ...csvRows].join("\n");
 
+    // Créer un Blob avec le contenu CSV
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-
+    
+    // Créer un URL pour le Blob
     const url = URL.createObjectURL(blob);
-
+    
+    // Créer un lien de téléchargement
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `reclamations_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute("download", `reclamations_${new Date().toISOString().slice(0,10)}.csv`);
     document.body.appendChild(link);
-
+    
+    // Déclencher le téléchargement
     link.click();
-
+    
+    // Nettoyer
     setTimeout(() => {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     }, 100);
-
-    showCustomAlert("Exportation réussie !", "success");
   };
 
+  // Map importance to badge colors
   const getImportanceBadgeClass = (importance) => {
-    switch (importance) {
+    switch(importance) {
       case "CRITIQUE":
         return "text-red-500 bg-red-100/60";
       case "IMPORTANTE":
@@ -322,8 +148,9 @@ const Table2 = () => {
     }
   };
 
+  // Map etat to status display
   const getEtatDisplay = (etat) => {
-    switch (etat) {
+    switch(etat) {
       case "PAS_ENCOURS":
         return { text: "Nouveau", class: "bg-blue-200 w-full" };
       case "ENCOURS":
@@ -336,30 +163,34 @@ const Table2 = () => {
         return { text: "Inconnu", class: "bg-gray-500 w-1/3" };
     }
   };
-
+  
   const countReferences = (reference) => {
     if (!reference) return 0;
     return reclamations.filter(item => item.reference === reference).length;
   };
-
+  
+  // Format date for display
   const formatDateTime = (dateTimeString) => {
     if (!dateTimeString) return "";
     const date = new Date(dateTimeString);
     return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Search functionality
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
   };
 
+  // Function to filter reclamations based on search term
   const getFilteredItems = () => {
     if (!searchTerm.trim()) {
       return reclamations;
     }
-
+    
     const searchTermLower = searchTerm.toLowerCase().trim();
-
+    
     return reclamations.filter(reclamation => {
+      // Convert all values to string and check if any includes the search term
       return (
         (reclamation.reference?.toString().toLowerCase().includes(searchTermLower) || false) ||
         (reclamation.importance?.toString().toLowerCase().includes(searchTermLower) || false) ||
@@ -373,6 +204,7 @@ const Table2 = () => {
     });
   };
 
+  // Pagination
   const handlePreviousPage = () => {
     if (currentPage > 1) {
       setCurrentPage(currentPage - 1);
@@ -385,6 +217,7 @@ const Table2 = () => {
     }
   };
 
+  // Get current page items
   const getCurrentItems = () => {
     const filteredItems = getFilteredItems();
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -392,88 +225,9 @@ const Table2 = () => {
     return filteredItems.slice(startIndex, endIndex);
   };
 
-  const handleFilterChange = (filter) => {
-    setActiveFilter(filter);
-  };
-
-  const CustomAlert = () => {
-    if (!alert.show) return null;
-
-    const alertStyles = {
-      info: {
-        bg: 'bg-blue-100',
-        border: 'border-blue-500',
-        text: 'text-blue-800',
-        icon: (
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"></path>
-          </svg>
-        )
-      },
-      success: {
-        bg: 'bg-green-100',
-        border: 'border-green-500',
-        text: 'text-green-800',
-        icon: (
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
-          </svg>
-        )
-      },
-      warning: {
-        bg: 'bg-yellow-100',
-        border: 'border-yellow-500',
-        text: 'text-yellow-800',
-        icon: (
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"></path>
-          </svg>
-        )
-      },
-      error: {
-        bg: 'bg-red-100',
-        border: 'border-red-500',
-        text: 'text-red-800',
-        icon: (
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"></path>
-          </svg>
-        )
-      }
-    };
-
-    const style = alertStyles[alert.type];
-
-    return (
-      <div className="fixed top-5 right-5 z-[100] max-w-md animate-fade-in-down mt-[5%]">
-        <div className={`flex p-4 mb-4 ${style.bg} ${style.text} border-l-4 ${style.border} rounded-lg shadow-md`} role="alert">
-          <div className="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 mr-2">
-            {style.icon}
-          </div>
-          <div className="ml-3 text-sm font-medium">
-            {alert.message}
-          </div>
-          <button
-            type="button"
-            className={`ml-auto -mx-1.5 -my-1.5 ${style.bg} ${style.text} rounded-lg focus:ring-2 focus:ring-gray-400 p-1.5 hover:bg-gray-200 inline-flex h-8 w-8`}
-            onClick={() => setAlert(prev => ({ ...prev, show: false }))}
-          >
-            <span className="sr-only">Fermer</span>
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"></path>
-            </svg>
-          </button>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <>
       <PageBreadcrumb pageTitle="Les Réclamations" />
-
-      <CustomAlert />
-
       <div className="space-y-6 mt-6">
         <section className="container px-4 mx-auto bg-white p-6 rounded-xl border border-gray-200 dark:bg-gray-900 dark:border-gray-800">
           <div className="sm:flex sm:items-center sm:justify-between">
@@ -488,11 +242,11 @@ const Table2 = () => {
             </div>
 
             <div className="flex items-center mt-4 gap-x-3">
-              <button
+              <button 
                 className="flex items-center justify-center w-1/2 px-5 py-2 text-sm text-gray-700 transition-colors duration-200 bg-white border rounded-lg gap-x-2 sm:w-auto dark:hover:bg-gray-800 dark:bg-gray-900 hover:bg-gray-100 dark:text-gray-200 dark:border-gray-700"
                 onClick={exportReclamationsToCSV}
               >
-                <svg width="20" height="20" viewBox="0 0 20 20" stroke="currentColor" strokeWidth="1.67" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <g clipPath="url(#clip0_3098_154395)">
                     <path d="M13.3333 13.3332L9.99997 9.9999M9.99997 9.9999L6.66663 13.3332M9.99997 9.9999V17.4999M16.9916 15.3249C17.8044 14.8818 18.4465 14.1806 18.8165 13.3321C19.1866 12.4835 19.2635 11.5359 19.0351 10.6388C18.8068 9.7417 18.2862 8.94616 17.5555 8.37778C16.8248 7.80939 15.9257 7.50052 15 7.4999H13.95C13.6977 6.52427 13.2276 5.61852 12.5749 4.85073C11.9222 4.08295 11.104 3.47311 10.1817 3.06708C9.25943 2.66104 8.25709 2.46937 7.25006 2.50647C6.24304 2.54358 5.25752 2.80849 4.36761 3.28129C3.47771 3.7541 2.70656 4.42249 2.11215 5.23622C1.51774 6.04996 1.11554 6.98785 0.935783 7.9794C0.756025 8.97095 0.803388 9.99035 1.07431 10.961C1.34523 11.9316 1.83267 12.8281 2.49997 13.5832" stroke="currentColor" strokeWidth="1.67" strokeLinecap="round" strokeLinejoin="round"/>
                   </g>
@@ -505,43 +259,23 @@ const Table2 = () => {
                 <span>Exporter toutes les réclamations</span>
               </button>
 
-              <button
-                className="flex items-center justify-center w-1/2 px-5 py-2 text-sm tracking-wide text-white transition-colors duration-200 bg-blue-500 rounded-lg shrink-0 sm:w-auto gap-x-2 hover:bg-blue-600 dark:hover:bg-blue-500 dark:bg-blue-600"
-                onClick={toggleModal}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>Ajouter Réclamation</span>
-              </button>
+          
             </div>
           </div>
 
           <div className="mt-6 md:flex md:items-center md:justify-between">
             <div className="inline-flex overflow-hidden bg-white border divide-x rounded-lg dark:bg-gray-900 rtl:flex-row-reverse dark:border-gray-700 dark:divide-gray-700">
-              <button
-                className={`px-5 py-2 text-xs font-medium transition-colors duration-200 sm:text-sm dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-100 ${activeFilter === 'all' ? 'bg-gray-100 text-blue-600' : 'text-gray-600'}`}
-                onClick={() => handleFilterChange('all')}
-              >
+              <button className="px-5 py-2 text-xs font-medium text-gray-600 transition-colors duration-200  sm:text-sm dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-100">
                 Voir tout
               </button>
-              <button
-                className={`px-5 py-2 text-xs font-medium transition-colors duration-200 sm:text-sm dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-100 ${activeFilter === 'today' ? 'bg-gray-100 text-blue-600' : 'text-gray-600'}`}
-                onClick={() => handleFilterChange('today')}
-              >
-                Aujourd'hui
+              <button className="px-5 py-2 text-xs font-medium text-gray-600 transition-colors duration-200 sm:text-sm dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-100">
+              Aujourd'hui
               </button>
-              <button
-                className={`px-5 py-2 text-xs font-medium transition-colors duration-200 sm:text-sm dark:hover:bg-gray-800 dark:text-gray-300 hover:bg-gray-100 ${activeFilter === 'week' ? 'bg-gray-100 text-blue-600' : 'text-gray-600'}`}
-                onClick={() => handleFilterChange('week')}
-              >
-                Semaine
+              <button className="px-5 py-2 text-xs font-medium text-gray-600 transition-colors duration-200 sm:text-sm dark:hover:bg-gray-800 dark:text-gray-300 hover:bg-gray-100">
+                semaine
               </button>
-              <button
-                className={`px-5 py-2 text-xs font-medium transition-colors duration-200 sm:text-sm dark:hover:bg-gray-800 dark:text-gray-300 hover:bg-gray-100 ${activeFilter === 'month' ? 'bg-gray-100 text-blue-600' : 'text-gray-600'}`}
-                onClick={() => handleFilterChange('month')}
-              >
-                Mois
+              <button className="px-5 py-2 text-xs font-medium text-gray-600 transition-colors duration-200 sm:text-sm dark:hover:bg-gray-800 dark:text-gray-300 hover:bg-gray-100">
+                mois
               </button>
             </div>
 
@@ -551,10 +285,10 @@ const Table2 = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                 </svg>
               </span>
-              <input
-                type="text"
-                placeholder="Rechercher"
-                className="block w-full py-1.5 pr-5 text-gray-700 bg-white border border-gray-200 rounded-lg md:w-80 placeholder-gray-400/70 pl-11 rtl:pr-11 rtl:pl-5 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-600 focus:border-blue-400 dark:focus:border-blue-300 focus:ring-blue-300 focus:outline-none focus:ring focus:ring-opacity-40"
+              <input 
+                type="text" 
+                placeholder="Rechercher" 
+                className="block w-full py-1.5 pr-5 text-gray-700 bg-white border border-gray-200 rounded-lg md:w-80 placeholder-gray-400/70 pl-11 rtl:pr-11 rtl:pl-5 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-600 focus:border-blue-400 dark:focus:border-blue-300 focus:ring-blue-300 focus:outline-none focus:ring focus:ring-opacity-40" 
                 value={searchTerm}
                 onChange={handleSearchChange}
               />
@@ -582,12 +316,13 @@ const Table2 = () => {
                           Importance
                         </th>
                         <th scope="col" className="px-4 py-3.5 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400">
-                          Type de panne
+                         Type de panne
                         </th>
                         <th scope="col" className="px-4 py-3.5 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400">
-                          Genre de panne
+                         Genre de panne
                         </th>
                         <th scope="col" className="px-4 py-3.5 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400">Numéro Client</th>
+                        
                         <th scope="col" className="px-4 py-3.5 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400">Etat</th>
                         <th scope="col" className="px-4 py-3.5 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400">Heure</th>
                         <th scope="col" className="px-4 py-3.5 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400">Transmis à</th>
@@ -606,24 +341,25 @@ const Table2 = () => {
                       ) : error ? (
                         <tr>
                           <td colSpan="9" className="px-4 py-4 text-sm text-center text-red-500">
-                            <div className="flex justify-center p-4">
-                              <div className="relative w-full max-w-sm rounded-lg border border-gray-100 bg-white px-12 py-6 shadow-md">
-                                <button className="absolute top-0 right-0 p-4 text-gray-400">
-                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-5 w-4">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                  </svg>
-                                </button>
-                                <p className="relative mb-1 text-sm font-medium">
-                                  <span className="absolute -left-7 flex h-5 w-5 items-center justify-center rounded-xl bg-red-400 text-white">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-3 w-3">
+                          <div className="flex justify-center p-4">
+                                <div className="relative w-full max-w-sm rounded-lg border border-gray-100 bg-white px-12 py-6 shadow-md">
+                                  <button className="absolute top-0 right-0 p-4 text-gray-400">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-5 w-4">
                                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
-                                  </span>
-                                  <span className="text-gray-700">Erreur :</span>
-                                </p>
-                                <p className="text-sm text-gray-600">{error}</p>
+                                  </button>
+                                  <p className="relative mb-1 text-sm font-medium">
+                                    <span className="absolute -left-7 flex h-5 w-5 items-center justify-center rounded-xl bg-red-400 text-white">
+                                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-3 w-3">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                      </svg>
+                                    </span>
+                                    <span className="text-gray-700">Erreur :</span>
+                                  </p>
+                                  <p className="text-sm text-gray-600">{error}</p>
+                                </div>
                               </div>
-                            </div>
+                             
                           </td>
                         </tr>
                       ) : getCurrentItems().length === 0 ? (
@@ -638,10 +374,10 @@ const Table2 = () => {
                             <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
                               <div>
                                 <h2 className="font-medium text-gray-800 dark:text-white">
-                                  {reclamation.reference || "N/A"}
+                                {reclamation.reference || "N/A"}
                                 </h2>
                                 <p className="text-sm font-normal text-gray-600 dark:text-gray-400">
-                                  réclamations : {countReferences(reclamation.reference)}
+                                réclamations  :  {countReferences(reclamation.reference)}
                                 </p>
                               </div>
                             </td>
@@ -697,14 +433,14 @@ const Table2 = () => {
               </div>
             </div>
           </div>
-
-          <div className="mt-6 sm:flex sm:items-center sm:justify-between">
+          
+                    <div className="mt-6 sm:flex sm:items-center sm:justify-between ">
             <div className="text-sm text-gray-500 dark:text-gray-400">
-              Page <span className="font-medium text-gray-700 dark:text-gray-100">{currentPage} de {totalPages}</span>
+              Page <span className="font-medium text-gray-700 dark:text-gray-100">{currentPage} de {totalPages}</span> 
             </div>
 
             <div className="flex items-center mt-4 gap-x-4 sm:mt-0">
-              <button
+              <button 
                 onClick={handlePreviousPage}
                 disabled={currentPage === 1}
                 className={`flex items-center justify-center w-1/2 px-5 py-2 text-sm text-gray-700 capitalize transition-colors duration-200 bg-white border rounded-md sm:w-auto gap-x-2 hover:bg-gray-100 dark:bg-gray-900 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-800 ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -717,7 +453,7 @@ const Table2 = () => {
                 </span>
               </button>
 
-              <button
+              <button 
                 onClick={handleNextPage}
                 disabled={currentPage === totalPages}
                 className={`flex items-center justify-center w-1/2 px-5 py-2 text-sm text-gray-700 capitalize transition-colors duration-200 bg-white border rounded-md sm:w-auto gap-x-2 hover:bg-gray-100 dark:bg-gray-900 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-800 ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -734,113 +470,9 @@ const Table2 = () => {
         </section>
       </div>
 
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-auto bg-black bg-opacity-50">
-          <div className="relative w-full max-w-screen-md mx-4 bg-white rounded-xl shadow-lg">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-xl font-medium text-gray-900">Ajouter Réclamation</h3>
-              <button onClick={toggleModal} className="text-gray-400 hover:text-gray-500">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="p-6">
-              <form onSubmit={handleSubmit}>
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  <div className="flex flex-col">
-                    <label htmlFor="reference" className="text-sm font-medium text-stone-600">Réference</label>
-                    <input
-                      type="text"
-                      id="reference"
-                      placeholder="Référence"
-                      className="mt-2 block w-full rounded-md border border-gray-100 bg-gray-100 px-2 py-2 shadow-sm outline-none focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                      value={formData.reference}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div className="flex flex-col">
-                    <label htmlFor="numClient" className="text-sm font-medium text-stone-600">Numéro client</label>
-                    <input
-                      type="number"
-                      id="numClient"
-                      
-                      placeholder="Numéro client"
-                      className="mt-2 block w-full rounded-md border border-gray-100 bg-gray-100 px-2 py-2 shadow-sm outline-none focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                      value={formData.numClient}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div className="flex flex-col">
-                    <label htmlFor="typePanne" className="text-sm font-medium text-stone-600">Type de panne</label>
-                    <select
-                      id="typePanne"
-                      className="mt-2 block w-full rounded-md border border-gray-100 bg-gray-100 px-2 py-2 shadow-sm outline-none focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                      value={formData.typePanne}
-                      onChange={handleInputChange}
-                    >
-                      <option value="">Sélectionner</option>
-                      <option value="TYPE1">TYPE1</option>
-                      <option value="TYPE2">TYPE2</option>
-                      <option value="TYPE3">TYPE3</option>
-                      <option value="TYPE4">TYPE4</option>
-                      <option value="TYPE5">TYPE5</option>
-                    </select>
-                  </div>
-                  <div className="flex flex-col">
-                    <label htmlFor="genrePanne" className="text-sm font-medium text-stone-600">Genre de panne</label>
-                    <select
-                      id="genrePanne"
-                      className="mt-2 block w-full rounded-md border border-gray-100 bg-gray-100 px-2 py-2 shadow-sm outline-none focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                      value={formData.genrePanne}
-                      onChange={handleInputChange}
-                    >
-                      <option value="">Sélectionner</option>
-                      <option value="ELECTRICITE">ELECTRICITE</option>
-                      <option value="GAZ">GAZ</option>
-                    </select>
-                  </div>
-                  <div className="flex flex-col">
-                    <label htmlFor="importance" className="text-sm font-medium text-stone-600">Importance</label>
-                    <select
-                      id="importance"
-                      className="mt-2 block w-full cursor-pointer rounded-md border border-gray-100 bg-gray-100 px-2 py-2 shadow-sm outline-none focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                      value={formData.importance}
-                      onChange={handleInputChange}
-                    >
-                      <option value="">Sélectionner </option>
-                      <option value="CRITIQUE">Critique</option>
-                      <option value="IMPORTANTE">Importante</option>
-                      <option value="MOYENNE">Moyenne</option>
-                      <option value="FAIBLE">Faible</option>
-                    </select>
-                  </div>
-                  <div className="flex flex-col">
-                    <label htmlFor="equipeId" className="text-sm font-medium text-stone-600">Equipe technique</label>
-                    <select
-                      id="equipeId"
-                      className="mt-2 block w-full cursor-pointer rounded-md border border-gray-100 bg-gray-100 px-2 py-2 shadow-sm outline-none focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                      value={formData.equipeId}
-                      onChange={handleInputChange}
-                    >
-                      <option value="">Sélectionner </option>
-                      <option value="1">Equipe A</option>
-                      <option value="2">Equipe B</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="mt-6 grid w-full grid-cols-2 justify-end space-x-4 md:flex">
-                  <button type="button" onClick={toggleModal} className="rounded-lg bg-gray-200 px-8 py-2 font-medium text-gray-700 outline-none hover:opacity-80 focus:ring">Annuler</button>
-                  <button type="submit" className="rounded-lg bg-blue-600 px-8 py-2 font-medium text-white outline-none hover:opacity-80 focus:ring">Ajouter la réclamation</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+     
+          </>
   );
 };
 
-export default Table2;
+export default Tabledirection;

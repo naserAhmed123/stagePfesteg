@@ -1,3 +1,7 @@
+if (typeof global === 'undefined') {
+  window.global = window;
+}
+
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
@@ -6,8 +10,11 @@ import "simplebar-react/dist/simplebar.min.css";
 import App from "./App.tsx";
 import { AppWrapper } from "./components/common/PageMeta.tsx";
 import { ThemeProvider } from "./context/ThemeContext.tsx";
+import { AuthProvider } from "./layout/AuthContext.tsx";
 
 createRoot(document.getElementById("root")!).render(
+  <AuthProvider>
+
   <StrictMode>
     <ThemeProvider>
       <AppWrapper>
@@ -15,4 +22,6 @@ createRoot(document.getElementById("root")!).render(
       </AppWrapper>
     </ThemeProvider>
   </StrictMode>
+  </AuthProvider>,
+
 );

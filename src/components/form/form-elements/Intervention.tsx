@@ -20,10 +20,63 @@ export default function DefaultInputs() {
   const [numTel, setNumTel] = useState("");
   const [password, setPassword] = useState("");
   const [alert, setAlert] = useState<AlertType>(null);
+  const ValiderNum = (num : any) => {
+    const numSTR = num.toString();
 
+    if (numSTR.length !== 8) {
+      return "cas1";
+    }
+    const lePremiere = numSTR.charAt(0);
+    if (!['2', '4', '5', '9'].includes(lePremiere)) {
+      return "cas2";
+    }
+    return "Valide";
+  };
+  const ValiderCarteIdentité = (num : any) => {
+    const numSTR = num.toString();
+
+    if (numSTR.length !== 8) {
+      return "cas1";
+    }
+    const lePremiere = numSTR.charAt(0);
+    if (!['1', '0'].includes(lePremiere)) {
+      return "cas2";
+    }
+    return "Valide";
+  };
+  function validerEmail(email : any) {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
+  }
   const handleSubmit = async () => {
+    if (!nom || !prenom || !email || !password || !carteIdentite || !numTel) {
+      setAlert({ variant: "error", title: "Erreur", message: "Veuillez remplir tous les champs" });
+      return;
+    }
+    if(ValiderNum(numTel)==="cas1"){
+      setAlert({ variant: "error", title: "Erreur", message: "Le numéro contient plus ou mois de 8 chiffre" });
+      return;
+
+    }else if(ValiderNum(numTel)==="cas2"){
+      setAlert({ variant: "error", title: "Erreur", message: "Le numéro n'est pas tunisian" });
+      return;
+
+    }
+    if(ValiderCarteIdentité(carteIdentite)==="cas1"){
+      setAlert({ variant: "error", title: "Erreur", message: "Le numéro de Carte identité contient plus ou mois de 8 chiffre" });
+      return;
+
+    }else if(ValiderCarteIdentité(carteIdentite)==="cas2"){
+      setAlert({ variant: "error", title: "Erreur", message: "Le numéro de carte identité n'est pas tunisian" });
+      return;
+
+    }
+    if (!validerEmail(email)) {
+      setAlert({ variant: "error", title: "Erreur", message: "l'email n'est pas valide" });
+      return;
+    }
     const serviceInterventionData = {
-      nom: `${nom} ${prenom}`,  // Fusionner le nom et le prénom ici
+      nom: `${nom} ${prenom}`,  
       email,
       motDePasse: password,
       carteIdentite: parseInt(carteIdentite),

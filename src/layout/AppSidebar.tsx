@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 import logo1 from "./logo1.png";
 import logo2 from "./logo2.png";
-import logo from "./steglogo.png"
+import logo from "./steglogo.png";
 
 import {
   BoxCubeIcon,
@@ -18,6 +18,9 @@ import {
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
+import { useAuth } from "./AuthContext"; 
+import { AlertCircleIcon, MapIcon } from "lucide-react";
+import Alert from "../components/ui/alert/Alert";
 
 type NavItem = {
   name: string;
@@ -26,70 +29,167 @@ type NavItem = {
   subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
 };
 
-const navItems: NavItem[] = [
-  {
-    icon: <GridIcon />,
-    name: "Dashboard",
-    subItems: [{ name: "Ecommerce", path: "/", pro: false }],
-  },
-  {
-    icon: <CalenderIcon />,
-    name: "Calendar",
-    path: "/calendar",
-  },
-  {
-    icon: <UserCircleIcon />,
-    name: "User Profile",
-    path: "/profile",
-  },
-  {
-    name: "Ajouter des Travailleurs",
-    icon: <ListIcon />,
-    subItems: [{ name: "Bureau Intervention", path: "/Intervention", pro: false },{ name: "Les Techniciens", path: "/LesTechniciens", pro: false }],
-    
-  },
-  {
-    name: "Tables",
-    icon: <TableIcon />,
-    subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
-  },
-  {
-    name: "Pages",
-    icon: <PageIcon />,
-    subItems: [
-      { name: "Blank Page", path: "/blank", pro: false },
-      { name: "404 Error", path: "/error-404", pro: false },
+const roleBasedMenus: Record<string, { main: NavItem[], others: NavItem[] }> = {
+  direction: {
+    main: [
+      {
+        icon: <GridIcon />,
+        name: "Dashboard",
+        subItems: [{ name: "Mon dashboard", path: "/cotéDirection", pro: false }],
+      },
+      {
+        icon: <CalenderIcon />,
+        name: "Calendar",
+        path: "/calendar",
+      },
+      {
+        icon: <UserCircleIcon />,
+        name: "User Profile",
+        path: "/profile",
+      },
+      {
+        name: "Gestion des Utilisateurs",
+        icon: <ListIcon />,
+        subItems: [
+          { name: "Liste bureau d'intervention", path: "/listeintervention", pro: false },
+          { name: "Liste des technicines", path: "/listetechnicien", pro: false },
+        ],
+      },
+      {
+        name: "Ajouter des Travailleurs",
+        icon: <ListIcon />,
+        subItems: [
+          { name: "Bureau Intervention", path: "/Intervention", pro: false },
+          { name: "Les Techniciens", path: "/LesTechniciens", pro: false },
+        ],
+      },
+      {
+        name: "Tables",
+        icon: <TableIcon />,
+        subItems: [{ name: "Table des réclamations", path: "/tableDirection", pro: false }],
+      },
+      {
+        name: "Rapports",
+        icon: <PageIcon />,
+        subItems: [
+          { name: "Les Rapport de IA", path: "/rapport", pro: false },
+          { name: "Les rapports des bureau intervention", path: "/lesrapportdeint", pro: false },
+          { name: "Les Rapports des techniciens", path: "/lesrapportdetech", pro: false },
+        ],
+      },
+      {
+        name: "Réclamation de retard",
+        icon: <AlertCircleIcon />,
+        subItems: [
+          { name: "Les retard de jour", path: "/not-found", pro: false },
+          { name: "Touts les retard", path: "/not-found", pro: false },
+        ],
+      },
+      {
+        name: "Live map",
+        icon: <MapIcon />,
+        path: "/mapsfax", 
+      },
+      {
+        name: "Stock de matriels",
+        icon: <BoxCubeIcon />,
+        path: "/matrieldirection", 
+      },
+    ],
+    others: [
+   
     ],
   },
-];
-
-const othersItems: NavItem[] = [
-  {
-    icon: <PieChartIcon />,
-    name: "Charts",
-    subItems: [
-      { name: "Line Chart", path: "/line-chart", pro: false },
-      { name: "Bar Chart", path: "/bar-chart", pro: false },
+  intervention: {
+    main: [
+      {
+        icon: <GridIcon />,
+        name: "Dashboard",
+        subItems: [{ name: "Mon dashboard", path: "/cotéBureauIntervention", pro: false }],
+      },
+      {
+        icon: <CalenderIcon />,
+        name: "Calendrier Interventions",
+        path: "/calendar",
+      },
+      {
+        name: "Tables",
+        icon: <TableIcon />,
+        subItems: [{ name: "Table des réclamations", path: "/AjouterReclamation", pro: false }],
+      },
+      {
+        icon: <UserCircleIcon />,
+        name: "Mon Profil",
+        path: "/profile",
+      },
+      {
+        icon: <UserCircleIcon />,
+        name: "Discussion Technicien",
+        path: "/messanger",
+      },
+      {
+        name: "Rapports",
+        icon: <PageIcon />,
+        subItems: [
+          { name: "Mes Rapports", path: "/rapport", pro: false },
+          { name: "Créer Rapport", path: "/creerRapport", pro: false },
+          { name: "Les Rapports des techniciens", path: "/lesrapportdetech", pro: false },
+        ],
+      },
+    ],
+    others: [
+      {
+        icon: <PieChartIcon />,
+        name: "Statistiques",
+        path: "/statistiques",
+      },
     ],
   },
-  {
-    icon: <BoxCubeIcon />,
-    name: "UI Elements",
-    subItems: [
-      { name: "alertet", path: "/alerts", pro: false },
-      { name: "Avatar", path: "/avatars", pro: false },
-      { name: "Badge", path: "/badge", pro: false },
-      { name: "Buttons", path: "/buttons", pro: false },
-      { name: "Images", path: "/images", pro: false },
-      { name: "Videos", path: "/videos", pro: false },
+  client: {
+    main: [
+      {
+        icon: <GridIcon />,
+        name: "Dashboard",
+        subItems: [{ name: "Mon dashboard", path: "/cotéClient", pro: false }],
+      },
+      {
+        icon: <CalenderIcon />,
+        name: "Mes Rendez-vous",
+        path: "/rendez-vous",
+      },
+      {
+        icon: <UserCircleIcon />,
+        name: "Mon Profil",
+        path: "/profile",
+      },
+      {
+        name: "Réclamation",
+        icon: <ListIcon />,
+        subItems: [
+          { name: "Nouvelle Demande", path: "/nouvelle-demande", pro: false },
+          { name: "Mes Demandes", path: "/mes-demandes", pro: false },
+        ],
+      },
+    ],
+    others: [
+      {
+        icon: <PageIcon />,
+        name: "Factures",
+        path: "/factures",
+      },
     ],
   },
- 
-];
+};
 
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const location = useLocation();
+  const { user } = useAuth(); 
+  
+  const userRole = user?.role || "client";
+  
+  const navItems = roleBasedMenus[userRole]?.main || [];
+  const othersItems = roleBasedMenus[userRole]?.others || [];
 
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: "main" | "others";
@@ -100,7 +200,6 @@ const AppSidebar: React.FC = () => {
   );
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  // const isActive = (path: string) => location.pathname === path;
   const isActive = useCallback(
     (path: string) => location.pathname === path,
     [location.pathname]
@@ -128,7 +227,7 @@ const AppSidebar: React.FC = () => {
     if (!submenuMatched) {
       setOpenSubmenu(null);
     }
-  }, [location, isActive]);
+  }, [location, isActive, navItems, othersItems]);
 
   useEffect(() => {
     if (openSubmenu !== null) {
@@ -299,34 +398,31 @@ const AppSidebar: React.FC = () => {
         }`}
       >
         <Link to="/">
-        {isExpanded || isHovered || isMobileOpen ? (
-  <>
-    <div className="flex items-center gap-x-3">
-      <img
-        className="dark:hidden transition-transform  hover:scale-110 -mb-6 ml-2"
-        src={logo1}
-        alt="Logo"
-        width={110}
-        height={30}
-      />
-   
-    </div>
+          {isExpanded || isHovered || isMobileOpen ? (
+            <>
+              <div className="flex items-center gap-x-3">
+                <img
+                  className="dark:hidden transition-transform hover:scale-110 -mb-6 ml-2"
+                  src={logo1}
+                  alt="Logo"
+                  width={110}
+                  height={30}
+                />
+              </div>
 
-    <div className="flex items-center gap-x-3">
-      <img
-        className="hidden dark:block transition-transform  hover:scale-110 -mb-6"
-        src={logo2}
-        alt="Logo"
-        width={110}
-        height={30}
-      />
-  
-    </div>
-  </>
-) : (
-  <img src={logo} alt="Logo" width={32} height={32} />
-)}
-
+              <div className="flex items-center gap-x-3">
+                <img
+                  className="hidden dark:block transition-transform hover:scale-110 -mb-6"
+                  src={logo2}
+                  alt="Logo"
+                  width={110}
+                  height={30}
+                />
+              </div>
+            </>
+          ) : (
+            <img src={logo} alt="Logo" width={32} height={32} />
+          )}
         </Link>
       </div>
       <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
@@ -348,22 +444,24 @@ const AppSidebar: React.FC = () => {
               </h2>
               {renderMenuItems(navItems, "main")}
             </div>
-            <div className="">
-              <h2
-                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "justify-start"
-                }`}
-              >
-                {isExpanded || isHovered || isMobileOpen ? (
-                  "Others"
-                ) : (
-                  <HorizontaLDots />
-                )}
-              </h2>
-              {renderMenuItems(othersItems, "others")}
-            </div>
+            {othersItems.length > 0 && (
+              <div className="">
+                <h2
+                  className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
+                    !isExpanded && !isHovered
+                      ? "lg:justify-center"
+                      : "justify-start"
+                  }`}
+                >
+                  {isExpanded || isHovered || isMobileOpen ? (
+                    "Others"
+                  ) : (
+                    <HorizontaLDots />
+                  )}
+                </h2>
+                {renderMenuItems(othersItems, "others")}
+              </div>
+            )}
           </div>
         </nav>
         {isExpanded || isHovered || isMobileOpen ? <SidebarWidget /> : null}
