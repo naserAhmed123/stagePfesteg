@@ -49,7 +49,7 @@ export default function UserInfoCard() {
           throw new Error("No email found in token");
         }
 
-        const response = await fetch(`http://localhost:8080/api/utilisater/${email}`, {
+        const response = await fetch(`http://localhost:8080/api/utilisateur/${email}`, {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`

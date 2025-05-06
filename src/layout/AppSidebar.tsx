@@ -5,6 +5,8 @@ import logo2 from "./logo2.png";
 import logo from "./steglogo.png";
 
 import {
+  AlertHexaIcon,
+  AlertIcon,
   BoxCubeIcon,
   CalenderIcon,
   ChevronDownIcon,
@@ -19,7 +21,7 @@ import {
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
 import { useAuth } from "./AuthContext"; 
-import { AlertCircleIcon, MapIcon } from "lucide-react";
+import { AlertCircleIcon, AlertTriangle, MapIcon } from "lucide-react";
 import Alert from "../components/ui/alert/Alert";
 
 type NavItem = {
@@ -64,9 +66,12 @@ const roleBasedMenus: Record<string, { main: NavItem[], others: NavItem[] }> = {
         ],
       },
       {
-        name: "Tables",
+        name: "Les réclamations",
         icon: <TableIcon />,
-        subItems: [{ name: "Table des réclamations", path: "/tableDirection", pro: false }],
+        subItems: [
+          { name: "Table des réclamations", path: "/tableDirection", pro: false },
+          { name: "Table des réclamations Archiver", path: "/tableDirectionArch", pro: false }
+        ],
       },
       {
         name: "Rapports",
@@ -113,14 +118,16 @@ const roleBasedMenus: Record<string, { main: NavItem[], others: NavItem[] }> = {
         path: "/calendar",
       },
       {
-        name: "Tables",
+        name: "Les Réclamations",
         icon: <TableIcon />,
-        subItems: [{ name: "Table des réclamations", path: "/AjouterReclamation", pro: false }],
+        subItems: [{ name: "Table des réclamations", path: "/AjouterReclamation", pro: false } ,
+          { name: " Les réclamations archiver", path: "/reclamationsArch", pro: false }
+        ],
       },
       {
-        icon: <UserCircleIcon />,
-        name: "Mon Profil",
-        path: "/profile",
+        icon: <MapIcon />,
+        name: "Map sfax",
+        path: "/mapsfax",
       },
       {
         icon: <UserCircleIcon />,
@@ -131,18 +138,15 @@ const roleBasedMenus: Record<string, { main: NavItem[], others: NavItem[] }> = {
         name: "Rapports",
         icon: <PageIcon />,
         subItems: [
-          { name: "Mes Rapports", path: "/rapport", pro: false },
+          { name: "Les Rapports de IA", path: "/rapport", pro: false },
+          { name: "Mes Rapports", path: "/mesrapports", pro: false },
           { name: "Créer Rapport", path: "/creerRapport", pro: false },
           { name: "Les Rapports des techniciens", path: "/lesrapportdetech", pro: false },
         ],
       },
     ],
     others: [
-      {
-        icon: <PieChartIcon />,
-        name: "Statistiques",
-        path: "/statistiques",
-      },
+    
     ],
   },
   client: {
@@ -153,9 +157,12 @@ const roleBasedMenus: Record<string, { main: NavItem[], others: NavItem[] }> = {
         subItems: [{ name: "Mon dashboard", path: "/cotéClient", pro: false }],
       },
       {
-        icon: <CalenderIcon />,
-        name: "Mes Rendez-vous",
-        path: "/rendez-vous",
+        icon: <AlertTriangle />,
+        name: "Plainte",
+        subItems: [
+          { name: "Nouvelle Plainte", path: "/ajouterPlainte", pro: false },
+          { name: "Mes Plaintes", path: "/mes-demandes", pro: false },
+        ],
       },
       {
         icon: <UserCircleIcon />,
@@ -166,17 +173,13 @@ const roleBasedMenus: Record<string, { main: NavItem[], others: NavItem[] }> = {
         name: "Réclamation",
         icon: <ListIcon />,
         subItems: [
-          { name: "Nouvelle Demande", path: "/nouvelle-demande", pro: false },
-          { name: "Mes Demandes", path: "/mes-demandes", pro: false },
+          { name: "Nouvelle Demande", path: "/recCitoyen", pro: false },
+          { name: "Mes Demandes", path: "/toutrecCit", pro: false },
         ],
       },
     ],
     others: [
-      {
-        icon: <PageIcon />,
-        name: "Factures",
-        path: "/factures",
-      },
+     
     ],
   },
 };

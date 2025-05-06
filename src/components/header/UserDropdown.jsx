@@ -41,16 +41,14 @@ const UserDropdown = () => {
           throw new Error("No email found in token");
         }
 
-        const response = await fetch(`http://localhost:8080/api/utilisater/${email}`, {
+        const response = await fetch(`http://localhost:8080/api/utilisateur/${email}`, {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           }
         });
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch user: ${response.status}`);
-        }
+      
 
         const userData = await response.json();
         setUser(userData);

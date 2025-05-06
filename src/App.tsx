@@ -17,8 +17,13 @@ const Intervention = lazy(() => import("./pages/Forms/Intervention"));
 const Table1 = lazy(() => import("./pages/Tables/Table1"));
 const Table2 = lazy(() => import("./pages/Tables/table2"));
 const Tabledirection = lazy(() => import("./pages/Tables/TableDirection"));
+const TabledirectionArch = lazy(() => import("./pages/Tables/tableDirectionArch"));
+const TableArchiverInt = lazy (() => import("./pages/LesRéclamationArchivInt"))
 const Chat = lazy(() => import("./pages/Chat/chat1"));
 const ReportGenerator = lazy(() => import("./pages/creerRapport"));
+const RéclamationCitoyen = lazy(() => import("./pages/LesreclamationCitoyen"));
+const ReclamationAllClient = lazy(() => import("./pages/toutRecCitoyen"));
+const AjouterPlainte = lazy(() => import("./pages/AjouterPlainte"));
 
 // UI Elements - lazy loaded
 const Videos = lazy(() => import("./pages/UiElements/Videos"));
@@ -39,6 +44,8 @@ const MatrielDirection = lazy(() => import("./pages/MatrielDirection"));
 const AppLayout = lazy(() => import("./layout/AppLayout"));
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import SfaxLightInterruptionRiskMap from "./pages/mapSfax";
+import TabledirectionArchiv from "./pages/Tables/tableDirectionArch";
+import MesRapportInt from "./pages/mesRapportPourInt";
 
 // Role-based route guard
 interface ProtectedRouteProps {
@@ -136,6 +143,21 @@ export default function App() {
               <Home />
             </ProtectedRoute>
           } />
+           <Route path="/recCitoyen" element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <RéclamationCitoyen />
+            </ProtectedRoute>
+          } />
+             <Route path="/toutrecCit" element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <ReclamationAllClient />
+            </ProtectedRoute>
+          } />
+            <Route path="/ajouterPlainte" element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <AjouterPlainte />
+            </ProtectedRoute>
+          } />
           <Route path="/Intervention" element={
             <ProtectedRoute allowedRoles={["direction"]}>
               <Intervention />
@@ -161,6 +183,11 @@ export default function App() {
               <Tabledirection />
             </ProtectedRoute>
           } />
+           <Route path="/tableDirectionArch" element={
+            <ProtectedRoute allowedRoles={["direction"]}>
+              <TabledirectionArchiv />
+            </ProtectedRoute>
+          } />
               <Route path="/matrieldirection" element={
             <ProtectedRoute allowedRoles={["direction"]}>
               <MatrielDirection />
@@ -173,12 +200,12 @@ export default function App() {
             </ProtectedRoute>
           } />
             <Route path="/rapport" element={
-            <ProtectedRoute allowedRoles={["intervention ", "direction"]}>
+            <ProtectedRoute allowedRoles={["intervention", "direction"]}>
               <ReclamationReportSystem />
             </ProtectedRoute>
           } />
                 <Route path="/lesrapportdeint" element={
-            <ProtectedRoute allowedRoles={["intervention ", "direction"]}>
+            <ProtectedRoute allowedRoles={["intervention", "direction"]}>
               <RapportInt />
             </ProtectedRoute>
           } />
@@ -197,8 +224,18 @@ export default function App() {
               <ReportGenerator />
             </ProtectedRoute>
           } />
+          <Route path="/mesrapports" element={
+            <ProtectedRoute allowedRoles={["intervention"]}>
+              <MesRapportInt />
+            </ProtectedRoute>
+          } />
+            <Route path="/reclamationsArch" element={
+            <ProtectedRoute allowedRoles={["intervention"]}>
+              <TableArchiverInt />
+            </ProtectedRoute>
+          } />
                <Route path="/lesrapportdetech" element={
-            <ProtectedRoute allowedRoles={["intervention ", "direction"]}>
+            <ProtectedRoute allowedRoles={["intervention", "direction"]}>
               <RapportTech />
             </ProtectedRoute>
           } />
