@@ -4,6 +4,7 @@ import { Modal } from "../ui/modal";
 import Button from "../ui/button/Button";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
+import { toast, Toaster } from 'react-hot-toast';
 
 export default function UserInfoCard() {
   const { isOpen, openModal, closeModal } = useModal();
@@ -18,7 +19,7 @@ export default function UserInfoCard() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [alert, setAlert] = useState({ show: false, message: '', type: 'info' });
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   function parseJwt(token) {
     if (!token) return null;
@@ -72,6 +73,7 @@ export default function UserInfoCard() {
         });
       } catch (err) {
         setError(err.message);
+        toast.error(`Error fetching user: ${err.message}`);
       } finally {
         setLoading(false);
       }
@@ -90,20 +92,36 @@ export default function UserInfoCard() {
 
   const validateForm = () => {
     if (formData.motDePasse && formData.motDePasse.length < 8) {
-      setAlert({ show: true, message: 'Password must be at least 8 characters', type: 'error' });
+      toast.error('Password must be at least 8 characters');
       return false;
     }
     if (formData.motDePasse !== formData.confirmMotDePasse) {
-      setAlert({ show: true, message: 'Passwords do not match', type: 'error' });
+      toast.error('Passwords do not match');
       return false;
     }
     return true;
   };
 
-  const handleSave = async () => {
+  const handleSaveClick = () => {
     if (!validateForm()) return;
-  
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmSave = async () => {
+    setShowConfirmModal(false);
+    
+    // Determine which save method to use based on role
+    if (user?.role === 'DIRECTION') {
+      await handleSaveDirection();
+    } else {
+      await handleSaveCitoyen();
+    }
+  };
+
+  const handleSaveDirection = async () => {
     try {
+      const loadingToast = toast.loading('Updating user information...');
+      
       const payload = {
         nom: formData.nom,
         carteIdentite: formData.carteIdentite,
@@ -126,11 +144,11 @@ export default function UserInfoCard() {
         throw new Error(`Failed to update user: ${response.status}`);
       }
   
-      // ici, juste lire le texte
+      // Read the response text
       const message = await response.text();
       console.log(message);
   
-      // Mettre à jour seulement localement si besoin (optionnel)
+      // Update local form state
       setFormData(prev => ({
         ...prev,
         motDePasse: '',
@@ -138,39 +156,83 @@ export default function UserInfoCard() {
       }));
   
       closeModal();
-      setAlert({ show: true, message: 'User updated successfully', type: 'success' });
+      toast.dismiss(loadingToast);
+      toast.success('Direction user updated successfully');
     } catch (err) {
-      setAlert({ show: true, message: `Error updating user: ${err.message}`, type: 'error' });
+      toast.error(`Error updating user: ${err.message}`);
+    }
+  };
+
+  const handleSaveCitoyen = async () => {
+    try {
+      const loadingToast = toast.loading('Updating user information...');
+      
+      const payload = {
+        nom: formData.nom,
+        carteIdentite: formData.carteIdentite,
+        role: formData.role,
+        motDePasse: formData.motDePasse || undefined,
+        con: formData.con,
+        email : user.email
+      };
+  
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:8080/api/citoyens/${user.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+  
+      if (!response.ok) {
+        throw new Error(`Failed to update user: ${response.status}`);
+      }
+  
+      // Read the response text
+      const message = await response.text();
+      console.log(message);
+  
+      // Update local form state
+      setFormData(prev => ({
+        ...prev,
+        motDePasse: '',
+        confirmMotDePasse: ''
+      }));
+  
+      closeModal();
+      toast.dismiss(loadingToast);
+      toast.success('Citoyen user updated successfully');
+    } catch (err) {
+      toast.error(`Error updating user: ${err.message}`);
     }
   };
   
-  const CustomAlert = () => {
-    if (!alert.show) return null;
-
-    const alertStyles = {
-      info: { bg: 'bg-blue-100', border: 'border-blue-500', text: 'text-blue-800' },
-      success: { bg: 'bg-green-100', border: 'border-green-500', text: 'text-green-800' },
-      error: { bg: 'bg-red-100', border: 'border-red-500', text: 'text-red-800' },
-    };
-
-    const style = alertStyles[alert.type];
-
+  const ConfirmationModal = () => {
+    if (!showConfirmModal) return null;
+    
     return (
-      <div className="fixed top-5 right-5 z-[100] max-w-md">
-        <div className={`flex p-4 mb-4 ${style.bg} ${style.text} border-l-4 ${style.border} rounded-lg shadow-md`}>
-          <div className="ml-3 text-sm font-medium">{alert.message}</div>
-          <button
-            className={`ml-auto -mx-1.5 -my-1.5 ${style.bg} ${style.text} rounded-lg p-1.5 hover:bg-gray-200 inline-flex h-8 w-8`}
-            onClick={() => setAlert({ show: false, message: '', type: 'info' })}
-          >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-              <path
-                fillRule="evenodd"
-                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </button>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="w-96 p-6 bg-white rounded-lg shadow-xl dark:bg-gray-800">
+          <h3 className="mb-4 text-lg font-medium text-gray-900 dark:text-white">Confirm Changes</h3>
+          <p className="mb-6 text-gray-600 dark:text-gray-300">
+            Are you sure you want to save these changes to your profile information?
+          </p>
+          <div className="flex justify-end space-x-4">
+            <button 
+              onClick={() => setShowConfirmModal(false)}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={handleConfirmSave}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+            >
+              Confirm
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -181,7 +243,29 @@ export default function UserInfoCard() {
 
   return (
     <div className="p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6">
-      <CustomAlert />
+      <Toaster position="top-right" toastOptions={{
+        success: {
+          style: {
+            background: '#10B981',
+            color: 'white',
+          },
+          iconTheme: {
+            primary: 'white',
+            secondary: '#10B981',
+          },
+        },
+        error: {
+          style: {
+            background: '#EF4444',
+            color: 'white',
+          },
+          iconTheme: {
+            primary: 'white',
+            secondary: '#EF4444',
+          },
+        },
+      }} />
+      <ConfirmationModal />
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h4 className="text-lg font-semibold text-gray-800 dark:text-white/90 lg:mb-6">
@@ -232,7 +316,7 @@ export default function UserInfoCard() {
         </div>
         <button
           onClick={openModal}
-          className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-theme-xs hover   hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200 lg:inline-flex lg:w-auto"
+          className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200 lg:inline-flex lg:w-auto"
         >
           <svg
             className="fill-current"
@@ -261,6 +345,7 @@ export default function UserInfoCard() {
             </h4>
             <p className="mb-6 text-sm text-gray-500 dark:text-gray-400 lg:mb-7">
               Update your details to keep your profile up-to-date.
+              {user?.role === 'DIRECTION' ? ' (Direction account)' : ' (Citoyen account)'}
             </p>
           </div>
           <form className="flex flex-col">
@@ -331,7 +416,7 @@ export default function UserInfoCard() {
               <Button size="sm" variant="outline" onClick={closeModal}>
                 Close
               </Button>
-              <Button size="sm" onClick={handleSave}>
+              <Button size="sm" onClick={handleSaveClick}>
                 Save Changes
               </Button>
             </div>

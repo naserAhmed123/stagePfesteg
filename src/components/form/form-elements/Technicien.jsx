@@ -134,11 +134,11 @@ export default function TechnicienPage() {
       <div className="space-y-6">
         <div>
           <Label htmlFor="nom">Nom</Label>
-          <Input type="text" id="nom" value={nom} onChange={(e) => setNom(e.target.value)} placeholder="ex : Ben ayed" />
+          <Input type="text" id="nom" value={nom} onChange={(e) => setNom(e.target.value)} placeholder="ex : Enaceur" />
         </div>
         <div>
           <Label htmlFor="prenom">Prénom</Label>
-          <Input type="text" id="prenom" value={prenom} onChange={(e) => setPrenom(e.target.value)} placeholder="ex : Ala" />
+          <Input type="text" id="prenom" value={prenom} onChange={(e) => setPrenom(e.target.value)} placeholder="ex : Ahmed" />
         </div>
         <div>
           <Label htmlFor="email">Email</Label>
@@ -150,7 +150,7 @@ export default function TechnicienPage() {
         </div>
         <div>
           <Label htmlFor="numTel">Numéro téléphone</Label>
-          <Input type="number" id="numTel" value={numTel} onChange={(e) => setNumTel(e.target.value)} placeholder="ex : 11111111" />
+          <Input type="number" id="numTel" value={numTel} onChange={(e) => setNumTel(e.target.value)} placeholder="ex : 27704159" />
         </div>
         <div>
           <Label htmlFor="password">Mot de Passe</Label>

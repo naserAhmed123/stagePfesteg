@@ -12,6 +12,9 @@ const UserProfiles = lazy(() => import("./pages/UserProfiles"));
 const Calendar = lazy(() => import("./pages/Calendar"));
 const Blank = lazy(() => import("./pages/Blank"));
 const Home = lazy(() => import("./pages/Dashboard/Home"));
+const CitoyenHome = lazy(() => import("./pages/Dashboard/citoyen"));
+const BackupPage = lazy(() => import("./pages/Backup"));
+
 const Technicien = lazy(() => import("./pages/Forms/LesTechniciens"));
 const Intervention = lazy(() => import("./pages/Forms/Intervention"));
 const Table1 = lazy(() => import("./pages/Tables/Table1"));
@@ -24,6 +27,8 @@ const ReportGenerator = lazy(() => import("./pages/creerRapport"));
 const RéclamationCitoyen = lazy(() => import("./pages/LesreclamationCitoyen"));
 const ReclamationAllClient = lazy(() => import("./pages/toutRecCitoyen"));
 const AjouterPlainte = lazy(() => import("./pages/AjouterPlainte"));
+const MesPlaintes = lazy(() => import("./pages/mesPlainte"));
+const MesRefs = lazy(() => import("./pages/MesRef"));
 
 // UI Elements - lazy loaded
 const Videos = lazy(() => import("./pages/UiElements/Videos"));
@@ -40,6 +45,16 @@ const RapportInt = lazy(() => import("./pages/rapportdesinter"));
 const ListeIntervention = lazy(() => import("./pages/table123"));
 const ListTechnicien = lazy(()=> import("./pages/tableListetech"));
 const MatrielDirection = lazy(() => import("./pages/MatrielDirection"));
+const EquipeDirection = lazy(() => import("./pages/EquipeDirection"));
+const AjouterRéference = lazy(() => import("./pages/AjouterRéferenceCit"));
+const RetardJours = lazy(() => import("./pages/ReclamationenRetard"));
+const TousLesRet = lazy(() => import("./pages/toutLesRetard"));
+const ListCitoyen = lazy(() => import("./pages/Tables/CitoyenList"));
+const ListReportage = lazy(() => import("./pages/Tables/TableReportage"));
+const ListReportageDirection = lazy(() => import("./pages/Tables/TableReportageDirection"));
+const ListeCitBloquerDirection = lazy(() => import("./pages/Tables/TableCitBloquer"));
+const TableRecCitoyen = lazy(() => import("./pages/Tables/TableRecCitoyen"));
+
 // Layout
 const AppLayout = lazy(() => import("./layout/AppLayout"));
 import { ScrollToTop } from "./components/common/ScrollToTop";
@@ -133,16 +148,46 @@ export default function App() {
           {/* Client Routes */}
           <Route path="/cotéClient" element={
             <ProtectedRoute allowedRoles={["client"]}>
-              <Home />
+              <CitoyenHome />
             </ProtectedRoute>
           } />
-          
+            <Route path="/mesPlaintes" element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <MesPlaintes />
+            </ProtectedRoute>
+          } />
+                  <Route path="/mesRéferences" element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <MesRefs />
+            </ProtectedRoute>
+          } />
           {/* Direction Routes */}
           <Route path="/cotéDirection" element={
             <ProtectedRoute allowedRoles={["direction"]}>
               <Home />
             </ProtectedRoute>
           } />
+          <Route path="/retardJour" element={
+            <ProtectedRoute allowedRoles={["direction"]}>
+              <RetardJours />
+            </ProtectedRoute>
+          } />
+               <Route path="/toutLesretards" element={
+            <ProtectedRoute allowedRoles={["direction"]}>
+              <TousLesRet />
+            </ProtectedRoute>
+          } />
+                     <Route path="/reportageDirection" element={
+            <ProtectedRoute allowedRoles={["direction"]}>
+              <ListReportageDirection />
+            </ProtectedRoute>
+          } />
+          <Route path="/listeCitoyenBloquer" element={
+            <ProtectedRoute allowedRoles={["direction"]}>
+              <ListeCitBloquerDirection />
+            </ProtectedRoute>
+          } />
+         
            <Route path="/recCitoyen" element={
             <ProtectedRoute allowedRoles={["client"]}>
               <RéclamationCitoyen />
@@ -156,6 +201,11 @@ export default function App() {
             <Route path="/ajouterPlainte" element={
             <ProtectedRoute allowedRoles={["client"]}>
               <AjouterPlainte />
+            </ProtectedRoute>
+          } />
+           <Route path="/ajouterRéference" element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <AjouterRéference />
             </ProtectedRoute>
           } />
           <Route path="/Intervention" element={
@@ -173,14 +223,25 @@ export default function App() {
               <ListTechnicien />
             </ProtectedRoute>
           } />
-          <Route path="/LesTechniciens" element={
+              <Route path="/LesTechniciens" element={
             <ProtectedRoute allowedRoles={["direction"]}>
               <Technicien />
+            </ProtectedRoute>
+          } />
+        
+          <Route path="/lesEquipes" element={
+            <ProtectedRoute allowedRoles={["direction"]}>
+              <EquipeDirection />
             </ProtectedRoute>
           } />
           <Route path="/tableDirection" element={
             <ProtectedRoute allowedRoles={["direction"]}>
               <Tabledirection />
+            </ProtectedRoute>
+          } />
+             <Route path="/backup" element={
+            <ProtectedRoute allowedRoles={["direction"]}>
+              <BackupPage />
             </ProtectedRoute>
           } />
            <Route path="/tableDirectionArch" element={
@@ -197,6 +258,21 @@ export default function App() {
           <Route path="/cotéBureauIntervention" element={
             <ProtectedRoute allowedRoles={["intervention"]}>
               <Home />
+            </ProtectedRoute>
+          } />
+           <Route path="/listeCitoynes" element={
+            <ProtectedRoute allowedRoles={["intervention"]}>
+              <ListCitoyen />
+            </ProtectedRoute>
+          } />
+           <Route path="/effectuerréclamation" element={
+            <ProtectedRoute allowedRoles={["intervention"]}>
+              <TableRecCitoyen />
+            </ProtectedRoute>
+          } />
+             <Route path="/listeReportage" element={
+            <ProtectedRoute allowedRoles={["intervention"]}>
+              <ListReportage />
             </ProtectedRoute>
           } />
             <Route path="/rapport" element={

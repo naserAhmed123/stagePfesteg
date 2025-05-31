@@ -193,13 +193,11 @@ export default function GenerateurRapport() {
     }
   };
 
-  // Fonction pour générer une chaîne aléatoire
   function generateRandomId() {
-    return Math.random().toString(36).substr(2, 9); // Génère une chaîne aléatoire de 9 caractères
+    return Math.random().toString(36).substr(2, 9); 
   }
 
-  // Fonction pour valider les champs du formulaire
-  const validateForm = () => {
+  const VerifChamp = () => {
     if (!titreRapport.trim()) {
       toast.warning('Veuillez saisir un titre pour le rapport', {
         position: 'top-right',
@@ -235,7 +233,6 @@ export default function GenerateurRapport() {
     return true;
   };
 
-  // Fonction pour sauvegarder le rapport dans le backend
   const saveReportToBackend = async ({ titreRapport, texteRapport, typeRapport, dateRapport, user }) => {
     try {
       const rapportData = {
@@ -252,17 +249,17 @@ export default function GenerateurRapport() {
         throw new Error('Token dauthentification manquant');
       }
 
-      // Vérifier la connexion réseau avant d'envoyer la requête
       if (!navigator.onLine) {
         throw new Error('Pas de connexion internet. Impossible de sauvegarder le rapport.');
       }
+    
 
       const response = await axios.post('http://localhost:8080/api/rapports', rapportData, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        timeout: 15000, // Délai d'expiration de 15 secondes
+        timeout: 15000, 
       });
 
       console.log('Report saved:', response.data);
@@ -276,13 +273,10 @@ export default function GenerateurRapport() {
       let errorMessage = 'Échec de lenregistrement du rapport sur le backend.';
       
       if (error.code === 'ECONNABORTED') {
-        // Erreur de délai d'attente
         errorMessage = 'La connexion au serveur a pris trop de temps. Veuillez réessayer ultérieurement.';
       } else if (error.response) {
-        // Erreur de réponse du serveur
         errorMessage = `Erreur serveur: ${error.response.status} - ${error.response.data.message || error.response.statusText}`;
         
-        // Messages spécifiques selon le code d'erreur
         if (error.response.status === 401) {
           errorMessage = 'Session expirée. Veuillez vous reconnecter.';
         } else if (error.response.status === 403) {
@@ -333,8 +327,7 @@ export default function GenerateurRapport() {
       return;
     }
 
-    // Validation du formulaire
-    if (!validateForm()) {
+    if (!VerifChamp()) {
       return;
     }
 

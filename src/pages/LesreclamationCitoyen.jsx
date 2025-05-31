@@ -24,6 +24,7 @@ const AddReclamation = () => {
     motDePasse: '',
     con: '',
     confirmMotDePasse: '',
+    numTelephone: '',
   });
   const [reclamations, setReclamations] = useState([]);
   const [editReclamation, setEditReclamation] = useState(null);
@@ -31,6 +32,7 @@ const AddReclamation = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [confirmMessage, setConfirmMessage] = useState('');
+  const [references, setReferences] = useState([]);
 
   function parseJwt(token) {
     if (!token) return null;
@@ -95,6 +97,7 @@ const AddReclamation = () => {
           motDePasse: '',
           con: userData.con || '',
           confirmMotDePasse: '',
+          numTelephone: userData.numTelephone || '',
         });
         toast.success('Données utilisateur chargées avec succès', {
           position: 'top-right',
@@ -114,6 +117,40 @@ const AddReclamation = () => {
 
     fetchUser();
   }, []);
+
+  useEffect(() => {
+    const fetchReferences = async () => {
+      if (!userData.id) return;
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`http://localhost:8080/api/citoyens/${userData.id}/references`, {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) {
+          throw new Error(`Échec de la récupération des références: ${response.status}`);
+        }
+        const data = await response.json();
+        setReferences(data);
+        if (data.length === 0) {
+          toast.warn('Aucune référence trouvée pour ce citoyen.', {
+            position: 'top-right',
+            autoClose: 5000,
+          });
+        }
+      } catch (err) {
+        console.error('Erreur lors de la récupération des références:', err);
+        toast.error(`Erreur: ${err.message}`, {
+          position: 'top-right',
+          autoClose: 5000,
+        });
+      }
+    };
+
+    fetchReferences();
+  }, [userData.id]);
 
   useEffect(() => {
     const fetchReclamations = async () => {
@@ -144,12 +181,12 @@ const AddReclamation = () => {
   }, [userData.id]);
 
   const [formData, setFormData] = useState({
-    reference: "",
-    numClient: "",
-    typePanne: "",
-    genrePanne: "",
-    importance: "",
-    etat: "PAS_ENCOURS",
+    reference: '',
+    numClient: userData.numTelephone || '', // Initialize with userData.numTelephone
+    typePanne: '',
+    genrePanne: '',
+    importance: '',
+    etat: 'PAS_ENCOURS',
     serviceInterventionId: 0,
     citoyen: userData.id,
   });
@@ -164,16 +201,16 @@ const AddReclamation = () => {
         console.log('Connected to WebSocket server');
         stompClient.subscribe('/topic/reclamations', (message) => {
           console.log('Received message:', message.body);
-          showCustomAlert("Nouvelle réclamation reçue!", "success");
+          showCustomAlert('Nouvelle réclamation reçue!', 'success');
         });
       },
       onWebSocketError: (error) => {
         console.error('WebSocket Error:', error);
-        showCustomAlert("Erreur de connexion WebSocket", "error");
+        showCustomAlert('Erreur de connexion WebSocket', 'error');
       },
       onStompError: (error) => {
         console.error('STOMP Error:', error);
-        showCustomAlert("Erreur STOMP", "error");
+        showCustomAlert('Erreur STOMP', 'error');
       },
     });
 
@@ -190,11 +227,11 @@ const AddReclamation = () => {
     setAlert({
       show: true,
       message,
-      type
+      type,
     });
 
     setTimeout(() => {
-      setAlert(prev => ({ ...prev, show: false }));
+      setAlert((prev) => ({ ...prev, show: false }));
     }, 5000);
   };
 
@@ -202,14 +239,14 @@ const AddReclamation = () => {
     setShowModal(!showModal);
     setEditReclamation(null);
     setFormData({
-      reference: "",
-      numClient: "",
-      typePanne: "",
-      genrePanne: "",
-      importance: "",
-      etat: "PAS_ENCOURS",
+      reference: '',
+      numClient: userData.numTelephone || '', // Reset to userData.numTelephone for new reclamation
+      typePanne: '',
+      genrePanne: '',
+      importance: '',
+      etat: 'PAS_ENCOURS',
       serviceInterventionId: 0,
-      citoyen: userData.id
+      citoyen: userData.id,
     });
   };
 
@@ -217,107 +254,112 @@ const AddReclamation = () => {
     const { id, value } = e.target;
     setFormData({
       ...formData,
-      [id]: value
+      [id]: value, // Allow any input to update formData, including numClient
     });
   };
 
   const AffecterRue = (ref) => {
     const refStr = ref.toString();
-    if (refStr.length !== 8) return "cas1";
+    if (refStr.length !== 8) return 'cas1';
     const les5 = parseInt(refStr.substring(0, 5), 10);
-    if (les5 > 72806 && les5 < 73392) return "GREMDA";
-    if (les5 > 73432 && les5 < 73588) return "LAFRANE";
-    if (les5 > 73590 && les5 < 73922) return "ELAIN";
-    if (les5 > 73924 && les5 < 74208) return "MANZEL_CHAKER";
-    if (les5 > 74252 && les5 < 74348) return "MATAR";
-    if (les5 > 74386 && les5 < 74405) return "SOKRA_MHARZA";
-    if (les5 > 74406 && les5 < 74700) return "GABES";
+    if (les5 > 72806 && les5 < 73392) return 'GREMDA';
+    if (les5 > 73432 && les5 < 73588) return 'LAFRANE';
+    if (les5 > 73590 && les5 < 73922) return 'ELAIN';
+    if (les5 > 73924 && les5 < 74208) return 'MANZEL_CHAKER';
+    if (les5 > 74252 && les5 < 74348) return 'MATAR';
+    if (les5 > 74386 && les5 < 74405) return 'SOKRA_MHARZA';
+    if (les5 > 74406 && les5 < 74700) return 'GABES';
     return null;
   };
 
   const AffecterPosition = (ref) => {
     const refStr = ref.toString();
     const les5 = parseInt(refStr.substring(0, 5), 10);
-    if (les5 > 72806 && les5 < 72923) return "34.809452, 10.697908";
-    if (les5 > 72923 && les5 < 73040) return "34.820176, 10.683399";
-    if (les5 > 73040 && les5 < 73157) return "34.831885, 10.664742";
-    if (les5 > 73157 && les5 < 73204) return "34.848438, 10.654134";
-    if (les5 > 73204 && les5 < 73251) return "34.877576, 10.647410";
-    if (les5 > 73251 && les5 < 73298) return "34.917272, 10.628854";
-    if (les5 > 73298 && les5 < 73345) return "34.949842, 10.604524";
-    if (les5 > 73345 && les5 < 73392) return "34.977689, 10.580294";
-    if (les5 > 74386 && les5 < 74395) return "34.726994, 10.735081";
-    if (les5 > 74395 && les5 < 74405) return "34.718671, 10.716934";
-    if (les5 > 74406 && les5 < 74443) return "34.725186, 10.740050";
-    if (les5 > 74443 && les5 < 74480) return "34.713981, 10.726896";
-    if (les5 > 74480 && les5 < 74517) return "34.692107, 10.712458";
-    if (les5 > 74517 && les5 < 74554) return "34.681489, 10.699727";
-    if (les5 > 74554 && les5 < 74584) return "34.649277, 10.661651";
-    if (les5 > 74584 && les5 < 74614) return "34.634163, 10.646154";
-    if (les5 > 74614 && les5 < 74643) return "34.624239, 10.634514";
-    if (les5 > 74643 && les5 < 74672) return "34.605497, 10.608144";
-    if (les5 > 74672 && les5 < 74700) return "34.591644, 10.595522";
-    if (les5 > 73432 && les5 < 73541) return "34.803097, 10.688320";
-    if (les5 > 73541 && les5 < 73588) return "34.818443, 10.679888";
-    if (les5 > 74252 && les5 < 74265) return "34.803097, 10.688320";
-    if (les5 > 74265 && les5 < 74278) return "34.818443, 10.679888";
-    if (les5 > 74278 && les5 < 74291) return "34.818443, 10.679888";
-    if (les5 > 74291 && les5 < 74299) return "34.818443, 10.679888";
-    if (les5 > 74299 && les5 < 74307) return "34.818443, 10.679888";
-    if (les5 > 74307 && les5 < 74328) return "34.818443, 10.679888";
-    if (les5 > 74328 && les5 < 74349) return "34.818443, 10.679888";
-    if (les5 > 73590 && les5 < 73673) return "34.796403, 10.680231";
-    if (les5 > 73673 && les5 < 73756) return "34.808556, 10.665329";
-    if (les5 > 73756 && les5 < 73789) return "34.820707, 10.649712";
-    if (les5 > 73789 && les5 < 74822) return "34.833610, 10.632666";
-    if (les5 > 74822 && les5 < 74855) return "34.845087, 10.617968";
-    if (les5 > 74855 && les5 < 74888) return "34.858657, 10.602249";
-    if (les5 > 74888 && les5 < 74922) return "34.872475, 10.588776";
-    if (les5 > 73924 && les5 < 73990) return "34.758306, 10.698916";
-    if (les5 > 73990 && les5 < 74056) return "34.769614, 10.683164";
-    if (les5 > 74056 && les5 < 74122) return "34.781924, 10.661600";
-    if (les5 > 74122 && les5 < 74152) return "34.789963, 10.647072";
-    if (les5 > 74152 && les5 < 74182) return "34.801642, 10.63132";
-    if (les5 > 74182 && les5 < 74888) return "34.813320, 10.615415";
-    if (les5 > 74195 && les5 < 74208) return "34.827382, 10.601192";
+    if (les5 > 72806 && les5 < 72923) return '34.809452, 10.697908';
+    if (les5 > 72923 && les5 < 73040) return '34.820176, 10.683399';
+    if (les5 > 73040 && les5 < 73157) return '34.831885, 10.664742';
+    if (les5 > 73157 && les5 < 73204) return '34.848438, 10.654134';
+    if (les5 > 73204 && les5 < 73251) return '34.877576, 10.647410';
+    if (les5 > 73251 && les5 < 73298) return '34.917272, 10.628854';
+    if (les5 > 73298 && les5 < 73345) return '34.949842, 10.604524';
+    if (les5 > 73345 && les5 < 73392) return '34.977689, 10.580294';
+    if (les5 > 74386 && les5 < 74395) return '34.726994, 10.735081';
+    if (les5 > 74395 && les5 < 74405) return '34.718671, 10.716934';
+    if (les5 > 74406 && les5 < 74443) return '34.725186, 10.740050';
+    if (les5 > 74443 && les5 < 74480) return '34.713981, 10.726896';
+    if (les5 > 74480 && les5 < 74517) return '34.692107, 10.712458';
+    if (les5 > 74517 && les5 < 74554) return '34.681489, 10.699727';
+    if (les5 > 74554 && les5 < 74584) return '34.649277, 10.661651';
+    if (les5 > 74584 && les5 < 74614) return '34.634163, 10.646154';
+    if (les5 > 74614 && les5 < 74643) return '34.624239, 10.634514';
+    if (les5 > 74643 && les5 < 74672) return '34.605497, 10.608144';
+    if (les5 > 74672 && les5 < 74700) return '34.591644, 10.595522';
+    if (les5 > 73432 && les5 < 73541) return '34.803097, 10.688320';
+    if (les5 > 73541 && les5 < 73588) return '34.818443, 10.679888';
+    if (les5 > 74252 && les5 < 74265) return '34.803097, 10.688320';
+    if (les5 > 74265 && les5 < 74278) return '34.818443, 10.679888';
+    if (les5 > 74278 && les5 < 74291) return '34.818443, 10.679888';
+    if (les5 > 74291 && les5 < 74299) return '34.818443, 10.679888';
+    if (les5 > 74299 && les5 < 74307) return '34.818443, 10.679888';
+    if (les5 > 74307 && les5 < 74328) return '34.818443, 10.679888';
+    if (les5 > 74328 && les5 < 74349) return '34.818443, 10.679888';
+    if (les5 > 73590 && les5 < 73673) return '34.796403, 10.680231';
+    if (les5 > 73673 && les5 < 73756) return '34.808556, 10.665329';
+    if (les5 > 73756 && les5 < 73789) return '34.820707, 10.649712';
+    if (les5 > 73789 && les5 < 74822) return '34.833610, 10.632666';
+    if (les5 > 74822 && les5 < 74855) return '34.845087, 10.617968';
+    if (les5 > 74855 && les5 < 74888) return '34.858657, 10.602249';
+    if (les5 > 74888 && les5 < 74922) return '34.872475, 10.588776';
+    if (les5 > 73924 && les5 < 73990) return '34.758306, 10.698916';
+    if (les5 > 73990 && les5 < 74056) return '34.769614, 10.683164';
+    if (les5 > 74056 && les5 < 74122) return '34.781924, 10.661600';
+    if (les5 > 74122 && les5 < 74152) return '34.789963, 10.647072';
+    if (les5 > 74152 && les5 < 74182) return '34.801642, 10.63132';
+    if (les5 > 74182 && les5 < 74888) return '34.813320, 10.615415';
+    if (les5 > 74195 && les5 < 74208) return '34.827382, 10.601192';
     return null;
   };
 
   const ValiderNum = (num) => {
     const numStr = num.toString();
-    if (numStr.length !== 8) return "cas1";
+    if (numStr.length !== 8) return 'cas1';
     const lePremiere = numStr.charAt(0);
-    if (!['2', '4', '5', '9'].includes(lePremiere)) return "cas2";
-    return "Valide";
+    if (!['2', '4', '5', '9'].includes(lePremiere)) return 'cas2';
+    return 'Valide';
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!formData.numClient) {
-      showCustomAlert("Le numéro client est obligatoire !", "error");
+      showCustomAlert('Le numéro client est obligatoire !', 'error');
+      return;
+    }
+
+    if (!formData.reference) {
+      showCustomAlert('Veuillez sélectionner une référence !', 'error');
       return;
     }
 
     if (!formData.typePanne || !formData.genrePanne || !formData.importance) {
-      showCustomAlert("Veuillez remplir tous les champs obligatoires !", "error");
+      showCustomAlert('Veuillez remplir tous les champs obligatoires !', 'error');
       return;
     }
 
     if (AffecterRue(formData.reference) === null) {
-      showCustomAlert("La référence n'est pas enregistrée ou disponible dans Sfax Sud", "error");
+      showCustomAlert("La référence n'est pas enregistrée ou disponible dans Sfax Sud", 'error');
       return;
     }
-    if (AffecterRue(formData.reference) === "cas1") {
-      showCustomAlert("La référence doit contenir 8 chiffres", "error");
+    if (AffecterRue(formData.reference) === 'cas1') {
+      showCustomAlert('La référence doit contenir 8 chiffres', 'error');
       return;
     }
-    if (ValiderNum(formData.numClient) === "cas1") {
-      showCustomAlert("Le numéro de client doit contenir 8 chiffres", "error");
+    if (ValiderNum(formData.numClient) === 'cas1') {
+      showCustomAlert('Le numéro de client doit contenir 8 chiffres', 'error');
       return;
     }
-    if (ValiderNum(formData.numClient) === "cas2") {
-      showCustomAlert("Le numéro de client n'est pas un numéro tunisien valide", "error");
+    if (ValiderNum(formData.numClient) === 'cas2') {
+      showCustomAlert("Le numéro de client n'est pas un numéro tunisien valide", 'error');
       return;
     }
 
@@ -327,7 +369,7 @@ const AddReclamation = () => {
     const payload = {
       reference: formData.reference,
       typePanne: formData.typePanne,
-      numClient: parseInt(formData.numClient, 10) || 0,
+      numClient: parseInt(formData.numClient, 10), // Use formData.numClient directly
       genrePanne: formData.genrePanne,
       heureReclamation: formattedDateTime,
       etat: formData.etat,
@@ -335,9 +377,9 @@ const AddReclamation = () => {
       equipeId: null,
       serviceInterventionId: 0,
       rue: AffecterRue(formData.reference),
-      etatSauvgarder: "NON_ARCHIVER",
+      etatSauvgarder: 'NON_ARCHIVER',
       Position2Km: AffecterPosition(formData.reference),
-      citoyen: userData.id
+      citoyen: userData.id,
     };
 
     try {
@@ -356,22 +398,23 @@ const AddReclamation = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(errorText || `HTTP error! status: ${response.status}`);
       }
 
       if (editReclamation) {
-        setReclamations(reclamations.map(rec => rec.id === editReclamation.id ? { ...rec, ...payload } : rec));
-        showCustomAlert("Réclamation modifiée avec succès !", "success");
+        setReclamations(reclamations.map((rec) => (rec.id === editReclamation.id ? { ...rec, ...payload } : rec)));
+        showCustomAlert('Réclamation modifiée avec succès !', 'success');
       } else {
         const newReclamation = await response.json();
         setReclamations([...reclamations, newReclamation]);
-        showCustomAlert("Réclamation ajoutée avec succès !", "success");
+        showCustomAlert('Réclamation ajoutée avec succès !', 'success');
       }
 
       toggleModal();
     } catch (e) {
       console.error("Erreur lors de l'opération sur la réclamation:", e);
-      showCustomAlert(`Erreur: ${e.message}`, "error");
+      showCustomAlert(`Erreur: ${e.message}`, 'error');
     }
   };
 
@@ -379,13 +422,13 @@ const AddReclamation = () => {
     setEditReclamation(reclamation);
     setFormData({
       reference: reclamation.reference,
-      numClient: reclamation.numClient.toString(),
+      numClient: reclamation.numClient.toString(), // Use reclamation’s numClient for editing
       typePanne: reclamation.typePanne,
       genrePanne: reclamation.genrePanne,
       importance: reclamation.importance,
       etat: reclamation.etat,
       serviceInterventionId: reclamation.serviceInterventionId,
-      citoyen: userData.id
+      citoyen: userData.id,
     });
     setShowModal(true);
   };
@@ -404,11 +447,11 @@ const AddReclamation = () => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      setReclamations(reclamations.filter(rec => rec.id !== id));
-      showCustomAlert("Réclamation supprimée avec succès !", "success");
+      setReclamations(reclamations.filter((rec) => rec.id !== id));
+      showCustomAlert('Réclamation supprimée avec succès !', 'success');
     } catch (e) {
-      console.error("Erreur lors de la suppression de la réclamation:", e);
-      showCustomAlert(`Erreur: ${e.message}`, "error");
+      console.error('Erreur lors de la suppression de la réclamation:', e);
+      showCustomAlert(`Erreur: ${e.message}`, 'error');
     }
   };
 
@@ -464,7 +507,7 @@ const AddReclamation = () => {
           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"></path>
           </svg>
-        )
+        ),
       },
       success: {
         bg: 'bg-green-100',
@@ -474,7 +517,7 @@ const AddReclamation = () => {
           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
           </svg>
-        )
+        ),
       },
       warning: {
         bg: 'bg-yellow-100',
@@ -484,7 +527,7 @@ const AddReclamation = () => {
           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
             <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"></path>
           </svg>
-        )
+        ),
       },
       error: {
         bg: 'bg-red-100',
@@ -494,12 +537,11 @@ const AddReclamation = () => {
           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"></path>
           </svg>
-        )
-      }
+        ),
+      },
     };
 
     const style = alertStyles[alert.type];
-
     return (
       <motion.div
         className="fixed top-5 right-5 z-[100] max-w-md"
@@ -508,16 +550,12 @@ const AddReclamation = () => {
         exit={{ opacity: 0, y: -20 }}
       >
         <div className={`flex p-4 mb-4 ${style.bg} ${style.text} border-l-4 ${style.border} rounded-lg shadow-md`} role="alert">
-          <div className="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 mr-2">
-            {style.icon}
-          </div>
-          <div className="ml-3 text-sm font-medium">
-            {alert.message}
-          </div>
+          <div className="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 mr-2">{style.icon}</div>
+          <div className="ml-3 text-sm font-medium">{alert.message}</div>
           <button
             type="button"
             className={`ml-auto -mx-1.5 -my-1.5 ${style.bg} ${style.text} rounded-lg focus:ring-2 focus:ring-gray-400 p-1.5 hover:bg-gray-200 inline-flex h-8 w-8`}
-            onClick={() => setAlert(prev => ({ ...prev, show: false }))}
+            onClick={() => setAlert((prev) => ({ ...prev, show: false }))}
           >
             <span className="sr-only">Fermer</span>
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
@@ -586,9 +624,7 @@ const AddReclamation = () => {
               Ajouter Réclamation
             </button>
           </div>
-          <p className="text-gray-600 dark:text-gray-300 mb-4">
-            Consultez vos trois réclamations les plus récentes ci-dessous.
-          </p>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">Consultez vos trois réclamations les plus récentes ci-dessous.</p>
         </div>
 
         {/* Modern Table */}
@@ -628,14 +664,14 @@ const AddReclamation = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{reclamation.rue}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
-                          onClick={() => showConfirmPopup(() => handleEdit(reclamation), "Voulez-vous vraiment modifier cette réclamation ?")}
+                          onClick={() => showConfirmPopup(() => handleEdit(reclamation), 'Voulez-vous vraiment modifier cette réclamation ?')}
                           className="text-blue-600 hover:text-blue-800 mr-4"
                           title="Modifier"
                         >
                           <FaEdit />
                         </button>
                         <button
-                          onClick={() => showConfirmPopup(() => handleDelete(reclamation.id), "Voulez-vous vraiment supprimer cette réclamation ?")}
+                          onClick={() => showConfirmPopup(() => handleDelete(reclamation.id), 'Voulez-vous vraiment supprimer cette réclamation ?')}
                           className="text-red-600 hover:text-red-800"
                           title="Supprimer"
                         >
@@ -678,31 +714,44 @@ const AddReclamation = () => {
               <form onSubmit={handleSubmit}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label htmlFor="reference" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Référence</label>
-                    <input
-                      type="text"
+                    <label htmlFor="reference" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Référence
+                    </label>
+                    <select
                       id="reference"
-                      placeholder="Entrez la référence"
                       className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                       value={formData.reference}
                       onChange={handleInputChange}
                       required
-                    />
+                      disabled={references.length === 0}
+                    >
+                      <option value="">Sélectionner une référence</option>
+                      {references.map((ref) => (
+                        <option key={ref} value={ref}>
+                          {ref}
+                        </option>
+                      ))}
+                    </select>
+                    {references.length === 0 && <p className="mt-1 text-sm text-red-500">Aucune référence disponible</p>}
                   </div>
                   <div>
-                    <label htmlFor="numClient" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Numéro Client</label>
+                    <label htmlFor="numClient" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Numéro Client
+                    </label>
                     <input
                       type="number"
                       id="numClient"
                       placeholder="Entrez le numéro client"
                       className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                      value={formData.numClient}
+                      value={formData.numClient} // Bind to formData.numClient
                       onChange={handleInputChange}
                       required
                     />
                   </div>
                   <div>
-                    <label htmlFor="typePanne" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Type de Panne</label>
+                    <label htmlFor="typePanne" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Type de Panne
+                    </label>
                     <select
                       id="typePanne"
                       className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
@@ -719,7 +768,9 @@ const AddReclamation = () => {
                     </select>
                   </div>
                   <div>
-                    <label htmlFor="genrePanne" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Genre de Panne</label>
+                    <label htmlFor="genrePanne" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Genre de Panne
+                    </label>
                     <select
                       id="genrePanne"
                       className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
@@ -733,7 +784,9 @@ const AddReclamation = () => {
                     </select>
                   </div>
                   <div>
-                    <label htmlFor="importance" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Importance</label>
+                    <label htmlFor="importance" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Importance
+                    </label>
                     <select
                       id="importance"
                       className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
