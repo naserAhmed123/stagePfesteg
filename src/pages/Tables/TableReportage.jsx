@@ -11,8 +11,8 @@ const ReportageTable = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [openDropdown, setOpenDropdown] = useState(null);
   const [detailsModal, setDetailsModal] = useState(null);
-  const [updateModal, setUpdateModal] = useState(null); // New state for update modal
-  const [updateForm, setUpdateForm] = useState({ // New state for update form
+  const [updateModal, setUpdateModal] = useState(null);
+  const [updateForm, setUpdateForm] = useState({
     idReportage: null,
     idCitoyen: null,
     idIntervention: null,
@@ -145,7 +145,6 @@ const ReportageTable = () => {
     setOpenDropdown(null);
   };
 
-  // New function to open update modal
   const handleUpdateReportage = (reportage) => {
     setUpdateForm({
       idReportage: reportage.idReportage,
@@ -159,7 +158,6 @@ const ReportageTable = () => {
     setOpenDropdown(null);
   };
 
-  // New function to handle form changes
   const handleFormChange = (e) => {
     const { name, value } = e.target;
     setUpdateForm((prev) => ({
@@ -168,7 +166,6 @@ const ReportageTable = () => {
     }));
   };
 
-  // New function to submit update
   const handleSubmitUpdate = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -345,13 +342,15 @@ const ReportageTable = () => {
                               <Eye className="w-4 h-4" />
                               Voir détails
                             </button>
-                            <button
-                              onClick={() => handleUpdateReportage(reportage)}
-                              className="flex items-center gap-3 w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors duration-150"
-                            >
-                              <FileText className="w-4 h-4" />
-                              Mise à jour
-                            </button>
+                            {reportage.acceptation === 'ENCOURS' && (
+                              <button
+                                onClick={() => handleUpdateReportage(reportage)}
+                                className="flex items-center gap-3 w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors duration-150"
+                              >
+                                <FileText className="w-4 h-4" />
+                                Mise à jour
+                              </button>
+                            )}
                           </div>
                         </div>
                       )}
@@ -531,7 +530,7 @@ const ReportageTable = () => {
                     <option value="">Sélectionner un type</option>
                     {typeReportageOptions.map((option) => (
                       <option key={option.value} value={option.value}>
-                        {option.label}
+                        {option.label || option.text}
                       </option>
                     ))}
                   </select>

@@ -31,10 +31,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
 
   const mapRoleToFrontend = (backendRole: string | undefined): "direction" | "intervention" | "client" => {
-    console.log("Backend role:", backendRole); // Log pour déboguer
+    console.log("Backend role:", backendRole); 
     if (!backendRole) {
       console.warn("Role missing in token, defaulting to client");
-      return "client"; // Valeur par défaut
+      return "client"; 
     }
     switch (backendRole.toUpperCase()) {
       case "DIRECTION":
@@ -97,7 +97,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         { headers: { "Content-Type": "application/json" } }
       );
 
-      console.log("Backend response:", response.data); // Log pour déboguer
+      console.log("Backend response:", response.data); 
       const { token } = response.data;
       if (!token) {
         throw new Error("No token received from server");

@@ -54,6 +54,8 @@ const ListReportage = lazy(() => import("./pages/Tables/TableReportage"));
 const ListReportageDirection = lazy(() => import("./pages/Tables/TableReportageDirection"));
 const ListeCitBloquerDirection = lazy(() => import("./pages/Tables/TableCitBloquer"));
 const TableRecCitoyen = lazy(() => import("./pages/Tables/TableRecCitoyen"));
+const TableNonVerifPlainte = lazy(() => import("./pages/Tables/PlaintesNonVerif"));
+const TableVerifPlainte = lazy(() => import("./pages/Tables/PlaintesVerifier"));
 
 // Layout
 const AppLayout = lazy(() => import("./layout/AppLayout"));
@@ -268,6 +270,16 @@ export default function App() {
            <Route path="/effectuerréclamation" element={
             <ProtectedRoute allowedRoles={["intervention"]}>
               <TableRecCitoyen />
+            </ProtectedRoute>
+          } />
+                 <Route path="/nonVerifPlainte" element={
+            <ProtectedRoute allowedRoles={["intervention"]}>
+              <TableNonVerifPlainte />
+            </ProtectedRoute>
+          } />
+            <Route path="/verifPlainte" element={
+            <ProtectedRoute allowedRoles={["intervention"]}>
+              <TableVerifPlainte />
             </ProtectedRoute>
           } />
              <Route path="/listeReportage" element={

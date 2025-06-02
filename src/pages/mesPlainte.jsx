@@ -19,6 +19,7 @@ const PlaintesDashboard = () => {
     etatRef: '',
     nomClient: '',
     dateDebut: '',
+    verif: '', // New search criterion for verif
   });
   const [selectedPlainte, setSelectedPlainte] = useState(null);
   const [userData, setUserData] = useState({
@@ -31,7 +32,6 @@ const PlaintesDashboard = () => {
     confirmMotDePasse: '',
   });
 
-  // Parse JWT token
   const parseJwt = useCallback((token) => {
     if (!token) return null;
     try {
@@ -54,7 +54,6 @@ const PlaintesDashboard = () => {
     }
   }, []);
 
-  // Fetch user data
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -116,7 +115,6 @@ const PlaintesDashboard = () => {
     fetchUser();
   }, [parseJwt]);
 
-  // Fetch complaints
   useEffect(() => {
     const fetchPlaintes = async () => {
       try {
@@ -129,7 +127,7 @@ const PlaintesDashboard = () => {
         }
 
         if (!userData.id) {
-          return; e
+          return;
         }
 
         const response = await fetch(`${API_URL}/api/plaintes/citoyen/${userData.id}`, {
@@ -176,29 +174,30 @@ const PlaintesDashboard = () => {
       const matchesDate = searchCriteria.dateDebut
         ? new Date(plainte.datePlainte).toISOString().split('T')[0] === searchCriteria.dateDebut
         : true;
-      return matchesReference && matchesEtat && matchesNom && matchesDate;
+      const matchesVerif = searchCriteria.verif
+        ? (plainte.verif || '').toLowerCase() === searchCriteria.verif.toLowerCase()
+        : true;
+      return matchesReference && matchesEtat && matchesNom && matchesDate && matchesVerif;
     });
     setFilteredPlaintes(filtered);
   }, [plaintes, searchCriteria]);
 
-  // Reset search criteria
   const resetSearchCriteria = () => {
     setSearchCriteria({
       referenceRec: '',
       etatRef: '',
       nomClient: '',
       dateDebut: '',
+      verif: '',
     });
     setFilteredPlaintes(plaintes);
   };
 
-  // Handle input change
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setSearchCriteria((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Open/close popup
   const openPopup = (plainte) => {
     setSelectedPlainte(plainte);
   };
@@ -317,6 +316,31 @@ const PlaintesDashboard = () => {
                 />
               </div>
             </div>
+            {/* Verif Dropdown */}
+            <div className="space-y-2">
+              <label htmlFor="verif" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Vérification
+              </label>
+              <div className="relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaCheckCircle className="text-gray-400" size={14} />
+                </div>
+                <select
+                  id="verif"
+                  name="verif"
+                  value={searchCriteria.verif}
+                  onChange={handleInputChange}
+                  className="p-2.5 pl-10 w-full rounded-lg border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 appearance-none"
+                >
+                  <option value="">Tous</option>
+                  <option value="OUI">OUI</option>
+                  <option value="NON">NON</option>
+                </select>
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <FaChevronDown className="text-gray-400" size={14} />
+                </div>
+              </div>
+            </div>
           </div>
           {/* Date Range Picker */}
           <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -380,9 +404,14 @@ const PlaintesDashboard = () => {
                   <FaCalendarAlt className="mr-2 text-purple-500" /> Date
                 </h3>
               </div>
-              <div className="col-span-4">
+              <div className="col-span-3">
                 <h3 className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider flex items-center">
                   <FaUser className="mr-2 text-orange-500" /> Client
+                </h3>
+              </div>
+              <div className="col-span-1">
+                <h3 className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider flex items-center">
+                  <FaCheckCircle className="mr-2 text-teal-500" /> Vérification
                 </h3>
               </div>
               <div className="col-span-1">
@@ -436,7 +465,7 @@ const PlaintesDashboard = () => {
                       : 'N/A'}
                   </div>
                 </div>
-                <div className="col-span-4 text-sm text-gray-700 dark:text-gray-300">
+                <div className="col-span-3 text-sm text-gray-700 dark:text-gray-300">
                   <div className="flex items-center">
                     <div className="flex-shrink-0 h-8 w-8 mr-3 bg-gray-200 dark:bg-gray-600 rounded-full flex items-center justify-center text-gray-600 dark:text-gray-300">
                       {plainte.nomClient.charAt(0).toUpperCase()}
@@ -448,6 +477,22 @@ const PlaintesDashboard = () => {
                       </div>
                     </div>
                   </div>
+                </div>
+                <div className="col-span-1">
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      plainte.verif === 'OUI'
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                    }`}
+                  >
+                    <span
+                      className={`w-2 h-2 mr-1.5 rounded-full ${
+                        plainte.verif === 'OUI' ? 'bg-green-500' : 'bg-red-500'
+                      }`}
+                    ></span>
+                    {plainte.verif || 'NON'}
+                  </span>
                 </div>
                 <div className="col-span-1 text-right">
                   <button
@@ -500,6 +545,18 @@ const PlaintesDashboard = () => {
                   <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
                     <FaUser className="mr-1.5 text-orange-500" size={12} />
                     {plainte.nomClient}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                    <FaCheckCircle className="mr-1.5 text-teal-500" size={12} />
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                        plainte.verif === 'OUI'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                      }`}
+                    >
+                      {plainte.verif || 'NON'}
+                    </span>
                   </div>
                 </div>
                 <div className="mt-3 flex justify-end">
@@ -633,6 +690,27 @@ const PlaintesDashboard = () => {
                       <span className="font-medium">N°:</span> {selectedPlainte.numClient || 'N/A'}
                     </p>
                   </div>
+                  {/* Verif */}
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 shadow-sm">
+                    <div className="flex items-center text-teal-600 dark:text-teal-400 mb-2">
+                      <FaCheckCircle className="mr-2" />
+                      <h3 className="font-semibold">Vérification</h3>
+                    </div>
+                    <div
+                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${
+                        selectedPlainte.verif === 'OUI'
+                          ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                          : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+                      }`}
+                    >
+                      <span
+                        className={`w-2 h-2 bg-${
+                          selectedPlainte.verif === 'OUI' ? 'green' : 'red'
+                        }-500 rounded-full mr-2`}
+                      ></span>
+                      {selectedPlainte.verif || 'NON'}
+                    </div>
+                  </div>
                 </div>
                 {/* IDs */}
                 <div className="mt-5 bg-gray-50 dark:bg-gray-700 rounded-lg p-4 shadow-sm">
@@ -676,12 +754,7 @@ const PlaintesDashboard = () => {
                   <FaTimes className="mr-2" />
                   <span>Fermer</span>
                 </button>
-                <button
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 flex items-center justify-center"
-                >
-                  <FaPrint className="mr-2" />
-                  <span>Imprimer</span>
-                </button>
+               
               </div>
             </motion.div>
           </motion.div>

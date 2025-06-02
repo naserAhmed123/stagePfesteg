@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Eye, AlertCircle, FileText, MoreVertical, User, Check, X } from 'lucide-react';
+import { Search, Eye, AlertCircle, FileText, MoreVertical, User, Check, X, Trash2 } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -17,28 +17,21 @@ const ReportageTable = () => {
   const navigate = useNavigate();
 
   const showCustomAlert = (message, type) => {
+    const toastConfig = {
+      position: 'top-right',
+      autoClose: 3000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+    };
     if (type === 'success') {
-      toast.success(message, {
-        position: 'top-right',
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
+      toast.success(message, toastConfig);
     } else if (type === 'error') {
-      toast.error(message, {
-        position: 'top-right',
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
+      toast.error(message, toastConfig);
     }
   };
 
-  // Parse JWT
   const parseJwt = (token) => {
     if (!token) {
       showCustomAlert('Aucun token trouvé. Veuillez vous connecter.', 'error');
@@ -63,7 +56,6 @@ const ReportageTable = () => {
     }
   };
 
-  // Fetch reportages
   useEffect(() => {
     const fetchReportages = async () => {
       try {
@@ -71,14 +63,10 @@ const ReportageTable = () => {
         setError(null);
 
         const token = localStorage.getItem('token');
-        if (!token) {
-          throw new Error('Aucun token trouvé');
-        }
+        if (!token) throw new Error('Aucun token trouvé');
 
         const decoded = parseJwt(token);
-        if (!decoded) {
-          throw new Error('Token JWT invalide ou mal formé');
-        }
+        if (!decoded) throw new Error('Token JWT invalide ou mal formé');
 
         const response = await fetch('http://localhost:8080/api/reportages', {
           method: 'GET',
@@ -137,25 +125,20 @@ const ReportageTable = () => {
     setOpenDropdown(null);
   };
 
-  // Open confirmation modal
   const confirmAction = (reportage, action) => {
     setConfirmation({ reportage, action });
     setOpenDropdown(null);
   };
 
-  // Execute confirmed action
   const executeAction = async () => {
     if (!confirmation) return;
     const { reportage, action } = confirmation;
 
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Aucun token trouvé');
-      }
+      if (!token) throw new Error('Aucun token trouvé');
 
       if (action === 'accept') {
-        // Update reportage acceptation to ACCEPTER
         const response = await fetch(`http://localhost:8080/api/reportages/${reportage.idReportage}/accept`, {
           method: 'PUT',
           headers: {
@@ -166,12 +149,10 @@ const ReportageTable = () => {
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.message || `Erreur lors de l'acceptation: ${response.status} ${response.statusText}`);
+          throw new Error(errorData.message || `Erreur lors de l'acceptation: ${response.status}`);
         }
 
         const updatedReportage = await response.json();
-
-        // Block the citizen
         const blockResponse = await fetch(`http://localhost:8080/api/citoyens/${reportage.idCitoyen}/bloquer`, {
           method: 'PUT',
           headers: {
@@ -181,10 +162,9 @@ const ReportageTable = () => {
 
         if (!blockResponse.ok) {
           const errorData = await blockResponse.json();
-          throw new Error(errorData.message || `Erreur lors du blocage du citoyen: ${blockResponse.status} ${response.statusText}`);
+          throw new Error(errorData.message || `Erreur lors du blocage du citoyen: ${blockResponse.status}`);
         }
 
-        // Update local state
         setData((prevData) =>
           prevData.map((item) =>
             item.idReportage === updatedReportage.idReportage ? updatedReportage : item
@@ -202,7 +182,7 @@ const ReportageTable = () => {
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.message || `Erreur lors du refus: ${response.status} ${response.statusText}`);
+          throw new Error(errorData.message || `Erreur lors du refus: ${response.status}`);
         }
 
         const updatedReportage = await response.json();
@@ -212,11 +192,29 @@ const ReportageTable = () => {
           )
         );
         showCustomAlert('Reportage refusé avec succès.', 'success');
+      } else if (action === 'archive') {
+        const response = await fetch(`http://localhost:8080/api/reportages/${reportage.idReportage}/archive`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `Erreur lors de l'archivage: ${response.status}`);
+        }
+
+        setData((prevData) =>
+          prevData.filter((item) => item.idReportage !== reportage.idReportage)
+        );
+        showCustomAlert('Reportage archivé avec succès.', 'success');
       }
 
       setConfirmation(null);
     } catch (err) {
-      console.error(`Erreur lors de l'action ${action} du reportage:`, err);
+      console.error(`Erreur lors de l'action ${action}:`, err);
       showCustomAlert(`Erreur: ${err.message}`, 'error');
       if (err.message.includes('token') || err.message.includes('401')) {
         navigate('/login');
@@ -225,7 +223,6 @@ const ReportageTable = () => {
     }
   };
 
-  // Style acceptation badge
   const getAcceptationStyle = (acceptation) => {
     switch (acceptation) {
       case 'ENCOURS':
@@ -373,7 +370,7 @@ const ReportageTable = () => {
                               <Eye className="w-4 h-4" />
                               Voir détails
                             </button>
-                            {reportage.acceptation === 'ENCOURS' && (
+                            {reportage.acceptation === 'ENCOURS' ? (
                               <>
                                 <button
                                   onClick={() => confirmAction(reportage, 'accept')}
@@ -390,6 +387,14 @@ const ReportageTable = () => {
                                   Refuser
                                 </button>
                               </>
+                            ) : (
+                              <button
+                                onClick={() => confirmAction(reportage, 'archive')}
+                                className="flex items-center gap-3 w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors duration-150"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Supprimer
+                              </button>
                             )}
                           </div>
                         </div>
@@ -402,7 +407,6 @@ const ReportageTable = () => {
           </div>
         </div>
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex justify-center items-center mt-8 gap-2">
             <button
@@ -449,7 +453,6 @@ const ReportageTable = () => {
           </div>
         )}
 
-        {/* Details Modal */}
         {detailsModal && (
           <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 backdrop-blur-sm p-4">
             <div className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl">
@@ -518,7 +521,6 @@ const ReportageTable = () => {
           </div>
         )}
 
-        {/* Confirmation Modal */}
         {confirmation && (
           <div
             className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 backdrop-blur-sm p-4"
@@ -528,7 +530,7 @@ const ReportageTable = () => {
           >
             <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl transform transition-all duration-300 scale-100 hover:scale-105">
               <div className="flex items-center gap-4 mb-6">
-                <div className="p-3 bg-yellow-500 rounded-full">
+                <div className="p-3 rounded-full bg-yellow-500">
                   <AlertCircle className="w-8 h-8 text-white" />
                 </div>
                 <div>
@@ -536,12 +538,23 @@ const ReportageTable = () => {
                     Confirmer l'action
                   </h2>
                   <p className="text-gray-600 mt-1">
-                    Voulez-vous vraiment{' '}
-                    {confirmation.action === 'accept' ? 'accepter' : 'refuser'} ce reportage ?
-                    {confirmation.action === 'accept' && (
-                      <span className="block text-red-600 font-medium mt-1">
-                        Le citoyen sera bloqué.
-                      </span>
+                    {confirmation.action === 'archive' ? (
+                      <>
+                        Voulez-vous vraiment supprimer ce reportage ? Il sera déplacé vers les archives.
+                        <span className="block text-red-600 font-medium mt-1">
+                          Cette action est irréversible sans accès aux archives.
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        Voulez-vous vraiment{' '}
+                        {confirmation.action === 'accept' ? 'accepter' : 'refuser'} ce reportage ?
+                        {confirmation.action === 'accept' && (
+                          <span className="block text-red-600 font-medium mt-1">
+                            Le citoyen sera bloqué.
+                          </span>
+                        )}
+                      </>
                     )}
                   </p>
                 </div>
@@ -558,7 +571,9 @@ const ReportageTable = () => {
                   className={`px-6 py-3 text-white rounded-xl hover:scale-105 transition-all duration-200 shadow-lg focus:outline-none focus:ring-2 ${
                     confirmation.action === 'accept'
                       ? 'bg-red-600 hover:bg-red-700 focus:ring-red-400'
-                      : 'bg-green-600 hover:bg-green-700 focus:ring-green-400'
+                      : confirmation.action === 'refuse'
+                      ? 'bg-green-600 hover:bg-green-700 focus:ring-green-400'
+                      : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-400'
                   }`}
                 >
                   Confirmer

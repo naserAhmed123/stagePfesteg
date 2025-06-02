@@ -31,10 +31,18 @@ export default function EquipeTechniqueTable() {
 
   const chargerEquipes = async () => {
     try {
-      const response = await fetch('http://localhost:8080/equipes');
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:8080/equipes', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP! statut: ${response.status}`);
+      }
+      
       const donnees = await response.json();
-      console.log(donnees)
       setEquipes(donnees);
       setEquipesFiltrees(donnees);
     } catch (erreur) {
@@ -68,7 +76,7 @@ export default function EquipeTechniqueTable() {
 
   useEffect(() => {
     filtrerEtTrierEquipes();
-  }, [filtrerEtTrierEquipes]);
+  }, [motRecherche, configTri, equipes]);
 
   const demanderTri = (cle) => {
     let direction = 'asc';
@@ -76,6 +84,10 @@ export default function EquipeTechniqueTable() {
       direction = 'desc';
     }
     setConfigTri({ cle, direction });
+  };
+
+  const paginer = (page) => {
+    setPageActuelle(page);
   };
 
   const totalPages = Math.ceil(equipesFiltrees.length / elementsParPage);
@@ -132,26 +144,29 @@ export default function EquipeTechniqueTable() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.nom) {
+    if (!formData.nom.trim()) {
       showCustomAlert("Veuillez remplir le nom de l'équipe", "error");
       return;
     }
 
     const payload = {
-      nom: formData.nom
+      nom: formData.nom.trim()
     };
 
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch('http://localhost:8080/equipes', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Erreur HTTP! statut: ${response.status}`);
       }
 
       setFormData({
@@ -164,7 +179,7 @@ export default function EquipeTechniqueTable() {
       await chargerEquipes();
     } catch (e) {
       console.error("Erreur lors de l'ajout de l'équipe:", e.message);
-      showCustomAlert("Erreur lors de l'ajout de l'équipe", "error");
+      showCustomAlert(e.message || "Erreur lors de l'ajout de l'équipe", "error");
     }
   };
 
@@ -180,39 +195,42 @@ export default function EquipeTechniqueTable() {
   const handleUpdate = async (e) => {
     e.preventDefault();
 
-    if (!formData.nom) {
+    if (!formData.nom.trim()) {
       showCustomAlert("Veuillez remplir le nom de l'équipe", "error");
       return;
     }
 
-    const payload = {
-      nom: formData.nom
-    };
-
     try {
-      const response = await fetch(`http://localhost:8080/equipes/${formData.id}`, {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Veuillez vous connecter pour effectuer cette action');
+      }
+
+      const encodedNewName = encodeURIComponent(formData.nom.trim());
+
+      const response = await fetch(`http://localhost:8080/equipes/${formData.id}/${encodedNewName}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Erreur HTTP! statut: ${response.status}`);
       }
 
       setFormData({
         id: '',
-        nom: ''
+        nom: '',
       });
-
       toggleModalModifier();
       showCustomAlert("Équipe modifiée avec succès !", "success");
       await chargerEquipes();
     } catch (e) {
-      console.error("Erreur lors de la modification de l'équipe:", e.message);
-      showCustomAlert("Erreur lors de la modification de l'équipe", "error");
+      console.error("Erreur lors de la modification:", e);
+      showCustomAlert(e.message || "Erreur lors de la modification de l'équipe", "error");
     }
   };
 
@@ -224,22 +242,32 @@ export default function EquipeTechniqueTable() {
 
   const supprimerEquipe = async () => {
     try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Veuillez vous connecter pour effectuer cette action');
+      }
+
       const response = await fetch(`http://localhost:8080/equipes/archive/${equipeASupprimer.id}`, {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Cette équipe contienne des techniciens`);
       }
 
-      setEquipes(prevEquipes => prevEquipes.filter(equipe => equipe.id !== equipeASupprimer.id));
-      setShowDeleteModal(false);
-      setEquipeASupprimer(null);
       showCustomAlert("Équipe archivée avec succès !", "success");
       await chargerEquipes();
     } catch (erreur) {
-      console.error("Erreur lors de l'archivage:", erreur.message);
-      showCustomAlert("Erreur lors de l'archivage de l'équipe", "error");
+      console.error("Erreur lors de l'archivage:", erreur);
+      showCustomAlert(erreur.message || "Erreur lors de l'archivage de l'équipe", "error");
+    } finally {
+      setShowDeleteModal(false);
+      setEquipeASupprimer(null);
     }
   };
 
@@ -367,11 +395,11 @@ export default function EquipeTechniqueTable() {
               <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Nom</label>
               <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{equipeSelectionnee.nom}</p>
             </div>
-              <div>
+            <div>
               <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Nombre des techniciens</label>
               <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{equipeSelectionnee.techniciens}</p>
             </div>
-               <div>
+            <div>
               <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Nombre des réclamations</label>
               <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{equipeSelectionnee.reclamations}</p>
             </div>

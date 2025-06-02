@@ -10,6 +10,7 @@ import {
   BoxCubeIcon,
   CalenderIcon,
   ChevronDownIcon,
+  ErrorHexaIcon,
   GridIcon,
   HorizontaLDots,
   ListIcon,
@@ -21,8 +22,9 @@ import {
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
 import { useAuth } from "./AuthContext"; 
-import { AlertCircleIcon, AlertTriangle, ArchiveIcon, MapIcon, Network, Users, UserX } from "lucide-react";
+import { AlertCircleIcon, AlertTriangle, ArchiveIcon, MailWarning, MapIcon, Network, Users, UserX } from "lucide-react";
 import Alert from "../components/ui/alert/Alert";
+import { ErrorIcon } from "react-hot-toast";
 
 type NavItem = {
   name: string;
@@ -140,6 +142,14 @@ const roleBasedMenus: Record<string, { main: NavItem[], others: NavItem[] }> = {
         icon: <TableIcon />,
         subItems: [{ name: "Table des réclamations", path: "/AjouterReclamation", pro: false } ,
           { name: "Les réclamations depuis citoyen", path: "/effectuerréclamation", pro: false },
+          
+        ],
+      },
+       {
+        name: "Les Plaintes",
+        icon: <MailWarning />,
+        subItems: [{ name: "Les Nouvelles Plaintes", path: "/nonVerifPlainte", pro: false } ,
+          { name: "Toutes les plaintes", path: "/verifPlainte", pro: false },
           
         ],
       },

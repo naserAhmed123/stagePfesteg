@@ -15,32 +15,57 @@ const BackupPage = () => {
   const [itemToRestore, setItemToRestore] = useState(null);
   const [isKeyVerified, setIsKeyVerified] = useState(false);
   const [showKeyModal, setShowKeyModal] = useState(true);
-  const [email, setEmail] = useState('');
   const [enteredKey, setEnteredKey] = useState('');
   const [keyError, setKeyError] = useState('');
   const [alert, setAlert] = useState({ show: false, message: '', type: 'info' });
   const dropZoneRef = useRef(null);
   const itemsPerPage = 8;
 
+  const parseJwt = (token) => {
+    if (!token) return null;
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      return JSON.parse(jsonPayload);
+    } catch (e) {
+      console.error('Erreur lors du décodage du token:', e);
+      showAlert('Problème avec votre session. Veuillez vous reconnecter.', 'error');
+      return null;
+    }
+  };
+
+  const token = localStorage.getItem('token');
+  const decoded = parseJwt(token);
+  const email = decoded?.email || null;
+
   const entityConfig = {
     Equipe: {
       endpoint: 'equipes/archived',
       restore: (id) => `equipes/${id}/restore`,
-      fields: ['id', 'nom'],
+      fields: ['id', 'nom', 'idDeArchive'],
+      idField: 'idDeArchive',
       icon: '👥',
       label: 'Équipes',
     },
     Materiel: {
       endpoint: 'api/materiels/archived',
       restore: (id) => `api/materiels/restore/${id}`,
-      fields: ['id', 'name', 'reference', 'status', 'lastUpdated'],
+      fields: ['id', 'name', 'reference', 'status', 'lastUpdated', 'idDeArchive'],
+      idField: 'idDeArchive',
       icon: '⚙️',
       label: 'Matériel',
     },
     Plainte: {
       endpoint: 'api/plaintes/archived',
-      restore: (id) => `/api/plaintes/restore/${id}`,
-      fields: ['id', 'referenceRec', 'etatRef', 'datePlainte', 'numClient', 'nomClient', 'Descrip'],
+      restore: (id) => `api/plaintes/restore/${id}`,
+      fields: ['id', 'referenceRec', 'etatRef', 'datePlainte', 'numClient', 'nomClient', 'Descrip', 'idDeArchive'],
+      idField: 'idDeArchive',
       icon: '📝',
       label: 'Plaintes',
     },
@@ -48,20 +73,23 @@ const BackupPage = () => {
       endpoint: 'api/rapports/archived',
       restore: (reference) => `/api/rapports/restore/${reference}`,
       fields: ['referenceRapport', 'titreRapport', 'Cont', 'typeRapport', 'dateRapport'],
+      idField: 'referenceRapport',
       icon: '📊',
       label: 'Rapports',
     },
     Reclamation: {
       endpoint: 'reclamations/archiver',
-      restore: (id) => `/reclamations/restore/${id}`,
-      fields: ['id', 'reference', 'typePanne', 'numClient', 'genrePanne', 'heureReclamation', 'etat', 'importance', 'Position2Km'],
+      restore: (id) => `reclamations/restore/${id}`,
+      fields: ['id', 'reference', 'typePanne', 'numClient', 'genrePanne', 'heureReclamation', 'etat', 'importance', 'Position2Km', 'idDeArchive'],
+      idField: 'idDeArchive',
       icon: '🔧',
       label: 'Réclamations',
     },
     Reportage: {
       endpoint: 'api/reportages/archived',
-      restore: (id) => `/api/reportages/${id}/restore`,
-      fields: ['idReportage', 'idCitoyen', 'idIntervention', 'dateReportage', 'typeReportage', 'acceptation'],
+      restore: (id) => `api/reportages/${id}/restore`,
+      fields: ['idReportage', 'idCitoyen', 'idIntervention', 'dateReportage', 'typeReportage', 'acceptation', 'idDeArchive'],
+      idField: 'idDeArchive',
       icon: '📰',
       label: 'Reportages',
     },
@@ -75,17 +103,27 @@ const BackupPage = () => {
     genrePanne: 'Genre Panne', heureReclamation: 'Heure', etat: 'État', importance: 'Importance',
     Position2Km: 'Position (2km)', idReportage: 'ID Reportage', idCitoyen: 'ID Citoyen',
     idIntervention: 'ID Intervention', dateReportage: 'Date Reportage', typeReportage: 'Type Reportage',
-    acceptation: 'Acceptation',
+    acceptation: 'Acceptation', idDeArchive: 'ID Archive',
   };
 
   useEffect(() => {
-    if (isKeyVerified) {
+    if (isKeyVerified && email) {
       const fetchData = async () => {
         setIsLoading(true);
         try {
-          const response = await fetch(`http://localhost:8080/${entityConfig[selectedEntity].endpoint}`);
+          const response = await fetch(`http://localhost:8080/${entityConfig[selectedEntity].endpoint}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
           if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
           const result = await response.json();
+          console.log('Fetched data:', result);
+          if (selectedEntity !== 'Rapport' && Array.isArray(result)) {
+            const missingArchiveIds = result.filter(item => !item.idDeArchive);
+            if (missingArchiveIds.length > 0) {
+              console.warn(`Missing idDeArchive for ${selectedEntity}:`, missingArchiveIds);
+              showAlert(`Certains ${entityConfig[selectedEntity].label.toLowerCase()} n’ont pas d’ID d’archive.`, 'warning');
+            }
+          }
           setData(Array.isArray(result) ? result : []);
         } catch (error) {
           console.error('Erreur lors du chargement des données:', error);
@@ -96,19 +134,25 @@ const BackupPage = () => {
         }
       };
       fetchData();
+    } else if (!email) {
+      showAlert('Session invalide. Veuillez vous reconnecter.', 'error');
+      setShowKeyModal(true);
     }
-  }, [selectedEntity, isKeyVerified]);
+  }, [selectedEntity, isKeyVerified, email]);
 
   const generateAndSendKey = async () => {
     if (!email) {
-      setKeyError('Veuillez entrer un email valide');
+      setKeyError('Email non disponible. Veuillez vous reconnecter.');
       return;
     }
     const key = Math.random().toString(36).substring(2, 10).toUpperCase();
     try {
       const response = await fetch('http://localhost:8080/api/secret/send-key', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ email, key }),
       });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -124,10 +168,17 @@ const BackupPage = () => {
       setKeyError('Veuillez entrer la clé secrète');
       return;
     }
+    if (!email) {
+      setKeyError('Email non disponible. Veuillez vous reconnecter.');
+      return;
+    }
     try {
       const response = await fetch('http://localhost:8080/api/secret/verify-key', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ email, key: enteredKey }),
       });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -157,8 +208,9 @@ const BackupPage = () => {
       info: { bg: 'bg-blue-100', border: 'border-blue-500', text: 'text-blue-800', icon: <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg> },
       success: { bg: 'bg-green-100', border: 'border-green-500', text: 'text-green-800', icon: <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg> },
       error: { bg: 'bg-red-100', border: 'border-red-500', text: 'text-red-800', icon: <X className="w-5 h-5" /> },
+      warning: { bg: 'bg-yellow-100', border: 'border-yellow-500', text: 'text-yellow-800', icon: <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.721-1.36 3.486 0l6.342 11.315A2 2 0 0116.342 17H3.658a2 2 0 01-1.743-2.586L8.257 3.099zM10 15a1 1 0 100-2 1 1 0 000 2zm0-8a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" /></svg> },
     };
-    const { bg, border, text, icon } = styles[alert.type];
+    const { bg, border, text, icon } = styles[alert.type] || styles.info;
     return (
       <div className="fixed top-4 right-4 max-w-sm z-50">
         <div className={`flex p-3 ${bg} ${text} border-l-4 ${border} rounded-lg shadow`}>
@@ -179,19 +231,8 @@ const BackupPage = () => {
             <Key className="w-6 h-6 text-blue-600" />
           </div>
           <h3 className="text-xl font-bold text-gray-800 text-center mb-3">Vérification</h3>
-          <p className="text-gray-600 text-center mb-4">Entrez votre email et la clé secrète.</p>
+          <p className="text-gray-600 text-center mb-4">Entrez la clé secrète envoyée à votre email.</p>
           <div className="space-y-3">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
-              <input
-                type="email"
-                id="email"
-                placeholder="votre@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none"
-              />
-            </div>
             <div>
               <label htmlFor="key" className="block text-sm font-medium text-gray-700">Clé Secrète</label>
               <input
@@ -226,6 +267,7 @@ const BackupPage = () => {
   };
 
   const confirmRestore = (item) => {
+    console.log('Item to restore:', item);
     setItemToRestore(item);
     setShowConfirmModal(true);
   };
@@ -234,17 +276,28 @@ const BackupPage = () => {
     if (!itemToRestore) return;
     setIsLoading(true);
     try {
-      const idField = selectedEntity === 'Rapport' ? 'referenceRapport' : 'id';
-      const response = await fetch(`http://localhost:8080/${entityConfig[selectedEntity].restore(itemToRestore[idField])}`, {
+      const idField = entityConfig[selectedEntity].idField;
+      if (!itemToRestore[idField]) {
+        throw new Error(`Identifiant ${idField} manquant pour ${selectedEntity}`);
+      }
+      const restoreUrl = `http://localhost:8080/${entityConfig[selectedEntity].restore(itemToRestore[idField])}`;
+      console.log('Restore URL:', restoreUrl);
+      const response = await fetch(restoreUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
       });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText || 'No details provided'}`);
+      }
       setData(data.filter((d) => d[idField] !== itemToRestore[idField]));
-      showAlert('Élément restauré !', 'success');
+      showAlert('Élément récupéré !', 'success');
     } catch (error) {
-      console.error('Erreur lors de la restauration:', error);
-      showAlert('Erreur lors de la restauration', 'error');
+      console.error('Erreur lors de la récupération:', error);
+      showAlert(`Erreur lors de la récupération: ${error.message}`, 'error');
     } finally {
       setIsLoading(false);
       setShowRestoreZone(false);
@@ -300,7 +353,7 @@ const BackupPage = () => {
     return item[fields[1]] || item[fields[0]] || 'Élément';
   };
 
-  if (!isKeyVerified) return <><CustomAlert /><KeyVerificationModal /></>;
+  if (!isKeyVerified || !email) return <><CustomAlert /><KeyVerificationModal /></>;
 
   return (
     <div className="p-4 bg-white">
@@ -312,7 +365,7 @@ const BackupPage = () => {
         </div>
 
         <div className="flex gap-3 mb-6 overflow-x-auto pb-2 scrollbar-hide">
-          {Object.entries(entityConfig).map(([entity, { icon, label }], index) => (
+          {Object.entries(entityConfig).map(([entity, { icon, label }]) => (
             <div
               key={entity}
               className={`min-w-[160px] p-4 rounded-lg border-2 cursor-pointer hover:bg-blue-50 transition ${
@@ -395,10 +448,15 @@ const BackupPage = () => {
                         ))}
                         <td className="py-3 px-4">
                           <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition">
-                            <button onClick={() => confirmRestore(item)} className="p-1.5 rounded bg-blue-100 hover:bg-blue-200 text-blue-600" title="Restaurer">
+                            <button
+                              onClick={() => confirmRestore(item)}
+                              disabled={!item[entityConfig[selectedEntity].idField]}
+                              className="p-1.5 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                              title="Restaurer"
+                            >
                               <RotateCcw className="w-4 h-4" />
                             </button>
-                            <button className="p-1.5 rounded bg-blue-100 hover:bg-blue-200 text-blue-600">
+                            <button className="p-1.5 rounded bg-blue-100 hover:bg-blue-200 text-blue-600" title="Voir">
                               <Eye className="w-4 h-4" />
                             </button>
                           </div>
@@ -473,7 +531,9 @@ const BackupPage = () => {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg max-w-sm w-full p-6">
               <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-yellow-100 rounded-full">
-                <svg className="w-6 h-6 text-yellow-600" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.721-1.36 3.486 0l6.342 11.315A2 2 0 0116.342 17H3.658a2 2 0 01-1.743-2.586L8.257 3.099zM10 15a1 1 0 100-2 1 1 0 000 2zm0-8a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+                <svg className="w-6 h-6 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.721-1.36 3.486 0l6.342 11.315A2 2 0 0116.342 17H3.658a2 2 0 01-1.743-2.586L8.257 3.099zM10 15a1 1 0 100-2 1 1 0 000 2zm0-8a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
               </div>
               <h3 className="text-lg font-bold text-gray-800 text-center mb-3">Confirmer</h3>
               <p className="text-gray-600 text-center mb-4">Restaurer "{getItemDisplayName(itemToRestore)}" ?</p>
@@ -519,4 +579,4 @@ const BackupPage = () => {
   );
 };
 
-export default BackupPage;
+export default React.memo(BackupPage);

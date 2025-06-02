@@ -147,10 +147,38 @@ const AddReference = () => {
     if (references.includes(parseInt(refStr, 10))) return 'Cette référence existe déjà';
     return null;
   };
+  const AffecterRue = (ref) => {
+    const refStr = ref.toString();
+    if (refStr.length !== 8) {
+      return 'cas1';
+    }
+
+    const les5 = parseInt(refStr.substring(0, 5), 10);
+
+    if (les5 > 72806 && les5 < 73392) {
+      return 'GREMDA';
+    } else if (les5 > 73432 && les5 < 73588) {
+      return 'LAFRANE';
+    } else if (les5 > 73590 && les5 < 73922) {
+      return 'ELAIN';
+    } else if (les5 > 73924 && les5 < 74208) {
+      return 'MANZEL_CHAKER';
+    } else if (les5 > 74252 && les5 < 74348) {
+      return 'MATAR';
+    } else if (les5 > 74386 && les5 < 74405) {
+      return 'SOKRA_MHARZA';
+    } else if (les5 > 74405 && les5 < 74700) {
+      return 'GABES';
+    }
+    return null;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+ if (AffecterRue(formData.newReference) === null) {
+      alert("La référence n'est pas enregistrée ou disponible dans Sfax Sud", 'error');
+      return;
+    }
     const newReference = formData.newReference.trim();
     const validationError = validateReference(newReference);
     if (validationError) {
