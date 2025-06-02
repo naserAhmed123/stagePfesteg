@@ -219,7 +219,7 @@ const confirmArchiverReclamation = async () => {
     showCustomAlert("Réclamation archivée avec succès !", "success");
   } catch (e) {
     console.error('Error archiving reclamation:', e);
-    showCustomAlert("Erreur lors de l'archivage de la réclamation", "error");
+    showCustomAlert("Cette réclamation a une ou plusieur nouvelle plaintes", "error");
   } finally {
     setConfirmDialog({ show: false, reclamationId: null, reclamationRef: '' });
   }

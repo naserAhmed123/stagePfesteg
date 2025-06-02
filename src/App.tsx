@@ -1,6 +1,7 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./layout/AuthContext";
 import { Suspense, lazy, JSX } from "react";
+import { AuthGuard } from "./layout/AuthContext";
 
 // Import auth pages directly as they're needed for initial load
 import SignIn from "./pages/AuthPages/SignIn";
@@ -21,7 +22,7 @@ const Table1 = lazy(() => import("./pages/Tables/Table1"));
 const Table2 = lazy(() => import("./pages/Tables/table2"));
 const Tabledirection = lazy(() => import("./pages/Tables/TableDirection"));
 const TabledirectionArch = lazy(() => import("./pages/Tables/tableDirectionArch"));
-const TableArchiverInt = lazy (() => import("./pages/LesRéclamationArchivInt"))
+const TableArchiverInt = lazy(() => import("./pages/LesRéclamationArchivInt"));
 const Chat = lazy(() => import("./pages/Chat/chat1"));
 const ReportGenerator = lazy(() => import("./pages/creerRapport"));
 const RéclamationCitoyen = lazy(() => import("./pages/LesreclamationCitoyen"));
@@ -43,7 +44,7 @@ const ReclamationReportSystem = lazy(() => import("./pages/rapport"));
 const RapportTech = lazy(() => import("./pages/LesRapportdetech"));
 const RapportInt = lazy(() => import("./pages/rapportdesinter"));
 const ListeIntervention = lazy(() => import("./pages/table123"));
-const ListTechnicien = lazy(()=> import("./pages/tableListetech"));
+const ListTechnicien = lazy(() => import("./pages/tableListetech"));
 const MatrielDirection = lazy(() => import("./pages/MatrielDirection"));
 const EquipeDirection = lazy(() => import("./pages/EquipeDirection"));
 const AjouterRéference = lazy(() => import("./pages/AjouterRéferenceCit"));
@@ -56,6 +57,7 @@ const ListeCitBloquerDirection = lazy(() => import("./pages/Tables/TableCitBloqu
 const TableRecCitoyen = lazy(() => import("./pages/Tables/TableRecCitoyen"));
 const TableNonVerifPlainte = lazy(() => import("./pages/Tables/PlaintesNonVerif"));
 const TableVerifPlainte = lazy(() => import("./pages/Tables/PlaintesVerifier"));
+const PlainteDirection = lazy(() => import("./pages/plainteDirection"));
 
 // Layout
 const AppLayout = lazy(() => import("./layout/AppLayout"));
@@ -63,6 +65,10 @@ import { ScrollToTop } from "./components/common/ScrollToTop";
 import SfaxLightInterruptionRiskMap from "./pages/mapSfax";
 import TabledirectionArchiv from "./pages/Tables/tableDirectionArch";
 import MesRapportInt from "./pages/mesRapportPourInt";
+
+// New Blocked Pages
+const BlockedPage = lazy(() => import("./pages/Blockpage"));
+const BlockedPageCit = lazy(() => import("./pages/BlockCit"));
 
 // Role-based route guard
 interface ProtectedRouteProps {
@@ -83,10 +89,17 @@ const ProtectedRoute = ({
   }
   
   if (!user) {
+    const token = localStorage.getItem("token");
+    const lastRole = localStorage.getItem("lastRole");
+    console.log("No user in ProtectedRoute, token:", !!token, "lastRole:", lastRole);
+    if (!token) {
+      return <Navigate to={lastRole === "client" ? "/blockedCit" : "/blocked"} replace />;
+    }
     return <Navigate to="/" replace />;
   }
   
   if (!allowedRoles.includes(user.role)) {
+    console.log(`Role ${user.role} not allowed for this route, redirecting to ${redirectPath}`);
     return <Navigate to={redirectPath} replace />;
   }
   
@@ -102,7 +115,7 @@ const AuthRoute = ({ children }: { children: JSX.Element }) => {
   }
   
   if (user) {
-    // Redirect to appropriate dashboard based on role
+    console.log(`Authenticated user with role ${user.role}, redirecting to dashboard`);
     if (user.role === "direction") {
       return <Navigate to="/cotéDirection" replace />;
     } else if (user.role === "intervention") {
@@ -117,17 +130,31 @@ const AuthRoute = ({ children }: { children: JSX.Element }) => {
 
 export default function App() {
   return (
-    <Router basename="/stagePfesteg">
+    <>
       <ScrollToTop />
       <Routes>
         {/* Auth Routes */}
         <Route path="/" element={<AuthRoute><SignIn /></AuthRoute>} />
         <Route path="/signup" element={<AuthRoute><SignUp /></AuthRoute>} />
         
-        {/* Protected Routes */}
+        {/* Blocked Pages - Accessible to all */}
+        <Route path="/blocked" element={
+          <Suspense fallback={<SignIn />}>
+            <BlockedPage />
+          </Suspense>
+        } />
+        <Route path="/blockedCit" element={
+          <Suspense fallback={<SignIn />}>
+            <BlockedPageCit />
+          </Suspense>
+        } />
+
+        {/* Protected Routes wrapped with AuthGuard */}
         <Route element={
           <Suspense fallback={<SignIn />}>
-            <AppLayout />
+            <AuthGuard>
+              <AppLayout />
+            </AuthGuard>
           </Suspense>
         }>
           {/* Shared Routes */}
@@ -153,16 +180,37 @@ export default function App() {
               <CitoyenHome />
             </ProtectedRoute>
           } />
-            <Route path="/mesPlaintes" element={
+          <Route path="/mesPlaintes" element={
             <ProtectedRoute allowedRoles={["client"]}>
               <MesPlaintes />
             </ProtectedRoute>
           } />
-                  <Route path="/mesRéferences" element={
+          <Route path="/mesRéferences" element={
             <ProtectedRoute allowedRoles={["client"]}>
               <MesRefs />
             </ProtectedRoute>
           } />
+          <Route path="/recCitoyen" element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <RéclamationCitoyen />
+            </ProtectedRoute>
+          } />
+          <Route path="/toutrecCit" element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <ReclamationAllClient />
+            </ProtectedRoute>
+          } />
+          <Route path="/ajouterPlainte" element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <AjouterPlainte />
+            </ProtectedRoute>
+          } />
+          <Route path="/ajouterRéference" element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <AjouterRéference />
+            </ProtectedRoute>
+          } />
+
           {/* Direction Routes */}
           <Route path="/cotéDirection" element={
             <ProtectedRoute allowedRoles={["direction"]}>
@@ -174,12 +222,17 @@ export default function App() {
               <RetardJours />
             </ProtectedRoute>
           } />
-               <Route path="/toutLesretards" element={
+          <Route path="/plainteDirection" element={
+            <ProtectedRoute allowedRoles={["direction"]}>
+              <PlainteDirection />
+            </ProtectedRoute>
+          } />
+          <Route path="/toutLesretards" element={
             <ProtectedRoute allowedRoles={["direction"]}>
               <TousLesRet />
             </ProtectedRoute>
           } />
-                     <Route path="/reportageDirection" element={
+          <Route path="/reportageDirection" element={
             <ProtectedRoute allowedRoles={["direction"]}>
               <ListReportageDirection />
             </ProtectedRoute>
@@ -189,48 +242,26 @@ export default function App() {
               <ListeCitBloquerDirection />
             </ProtectedRoute>
           } />
-         
-           <Route path="/recCitoyen" element={
-            <ProtectedRoute allowedRoles={["client"]}>
-              <RéclamationCitoyen />
-            </ProtectedRoute>
-          } />
-             <Route path="/toutrecCit" element={
-            <ProtectedRoute allowedRoles={["client"]}>
-              <ReclamationAllClient />
-            </ProtectedRoute>
-          } />
-            <Route path="/ajouterPlainte" element={
-            <ProtectedRoute allowedRoles={["client"]}>
-              <AjouterPlainte />
-            </ProtectedRoute>
-          } />
-           <Route path="/ajouterRéference" element={
-            <ProtectedRoute allowedRoles={["client"]}>
-              <AjouterRéference />
-            </ProtectedRoute>
-          } />
           <Route path="/Intervention" element={
             <ProtectedRoute allowedRoles={["direction"]}>
               <Intervention />
             </ProtectedRoute>
           } />
-                <Route path="/listeintervention" element={
+          <Route path="/listeintervention" element={
             <ProtectedRoute allowedRoles={["direction"]}>
               <ListeIntervention />
             </ProtectedRoute>
           } />
-            <Route path="/listetechnicien" element={
+          <Route path="/listetechnicien" element={
             <ProtectedRoute allowedRoles={["direction"]}>
               <ListTechnicien />
             </ProtectedRoute>
           } />
-              <Route path="/LesTechniciens" element={
+          <Route path="/LesTechniciens" element={
             <ProtectedRoute allowedRoles={["direction"]}>
               <Technicien />
             </ProtectedRoute>
           } />
-        
           <Route path="/lesEquipes" element={
             <ProtectedRoute allowedRoles={["direction"]}>
               <EquipeDirection />
@@ -241,63 +272,64 @@ export default function App() {
               <Tabledirection />
             </ProtectedRoute>
           } />
-             <Route path="/backup" element={
+          <Route path="/backup" element={
             <ProtectedRoute allowedRoles={["direction"]}>
               <BackupPage />
             </ProtectedRoute>
           } />
-           <Route path="/tableDirectionArch" element={
+          <Route path="/tableDirectionArch" element={
             <ProtectedRoute allowedRoles={["direction"]}>
               <TabledirectionArchiv />
             </ProtectedRoute>
           } />
-              <Route path="/matrieldirection" element={
+          <Route path="/matrieldirection" element={
             <ProtectedRoute allowedRoles={["direction"]}>
               <MatrielDirection />
             </ProtectedRoute>
           } />
+
           {/* Bureau Intervention Routes */}
           <Route path="/cotéBureauIntervention" element={
             <ProtectedRoute allowedRoles={["intervention"]}>
               <Home />
             </ProtectedRoute>
           } />
-           <Route path="/listeCitoynes" element={
+          <Route path="/listeCitoynes" element={
             <ProtectedRoute allowedRoles={["intervention"]}>
               <ListCitoyen />
             </ProtectedRoute>
           } />
-           <Route path="/effectuerréclamation" element={
+          <Route path="/effectuerréclamation" element={
             <ProtectedRoute allowedRoles={["intervention"]}>
               <TableRecCitoyen />
             </ProtectedRoute>
           } />
-                 <Route path="/nonVerifPlainte" element={
+          <Route path="/nonVerifPlainte" element={
             <ProtectedRoute allowedRoles={["intervention"]}>
               <TableNonVerifPlainte />
             </ProtectedRoute>
           } />
-            <Route path="/verifPlainte" element={
+          <Route path="/verifPlainte" element={
             <ProtectedRoute allowedRoles={["intervention"]}>
               <TableVerifPlainte />
             </ProtectedRoute>
           } />
-             <Route path="/listeReportage" element={
+          <Route path="/listeReportage" element={
             <ProtectedRoute allowedRoles={["intervention"]}>
               <ListReportage />
             </ProtectedRoute>
           } />
-            <Route path="/rapport" element={
+          <Route path="/rapport" element={
             <ProtectedRoute allowedRoles={["intervention", "direction"]}>
               <ReclamationReportSystem />
             </ProtectedRoute>
           } />
-                <Route path="/lesrapportdeint" element={
+          <Route path="/lesrapportdeint" element={
             <ProtectedRoute allowedRoles={["intervention", "direction"]}>
               <RapportInt />
             </ProtectedRoute>
           } />
-                <Route path="/messanger" element={
+          <Route path="/messanger" element={
             <ProtectedRoute allowedRoles={["intervention"]}>
               <Chat />
             </ProtectedRoute>
@@ -307,7 +339,7 @@ export default function App() {
               <Table2 />
             </ProtectedRoute>
           } />
-           <Route path="/creerRapport" element={
+          <Route path="/creerRapport" element={
             <ProtectedRoute allowedRoles={["intervention"]}>
               <ReportGenerator />
             </ProtectedRoute>
@@ -317,12 +349,12 @@ export default function App() {
               <MesRapportInt />
             </ProtectedRoute>
           } />
-            <Route path="/reclamationsArch" element={
+          <Route path="/reclamationsArch" element={
             <ProtectedRoute allowedRoles={["intervention"]}>
               <TableArchiverInt />
             </ProtectedRoute>
           } />
-               <Route path="/lesrapportdetech" element={
+          <Route path="/lesrapportdetech" element={
             <ProtectedRoute allowedRoles={["intervention", "direction"]}>
               <RapportTech />
             </ProtectedRoute>
@@ -354,16 +386,11 @@ export default function App() {
               <Buttons />
             </ProtectedRoute>
           } />
-             <Route path="/mapsfax" element={
+          <Route path="/mapsfax" element={
             <ProtectedRoute allowedRoles={["client", "direction", "intervention"]}>
               <SfaxLightInterruptionRiskMap />
             </ProtectedRoute>
           } />
-              {/* <Route path="/tabbo3" element={
-            <ProtectedRoute allowedRoles={["client", "direction", "intervention"]}>
-              <AppTab />
-            </ProtectedRoute>
-          } /> */}
           <Route path="/images" element={
             <ProtectedRoute allowedRoles={["client", "direction", "intervention"]}>
               <Images />
@@ -388,10 +415,9 @@ export default function App() {
         
         {/* Error Routes */}
         <Route path="/not-found" element={<NotFound />} />
-
         <Route path="/not-authorized" element={<NotFound />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
-    </Router>
+    </>
   );
 }

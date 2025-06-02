@@ -120,6 +120,11 @@ const roleBasedMenus: Record<string, { main: NavItem[], others: NavItem[] }> = {
         icon: <UserX />,
         path: "/listeCitoyenBloquer", 
       },
+      , {
+        name: "Les plaintes ",
+        icon: <MailWarning />,
+        path: "/plainteDirection", 
+      },
     ],
     others: [
    
