@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
@@ -8,8 +8,8 @@ export interface User {
   name: string;
   role: "direction" | "intervention" | "client";
   avatar?: string;
-  travail?: "ENCOURS" | "QUITTER"; // For SERVICE_INTERVENTION
-  etatCompte?: "NON_BLOQUER" | "BLOQUER"; // For CITOYEN
+  travail?: "ENCOURS" | "QUITTER"; 
+  etatCompte?: "NON_BLOQUER" | "BLOQUER"; 
 }
 
 interface AuthContextType {
@@ -33,6 +33,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const redirecting = useRef(false); // Pour éviter les redirections multiples
 
   const mapRoleToFrontend = (backendRole: string | undefined): "direction" | "intervention" | "client" => {
     console.log("Backend role:", backendRole);
@@ -71,63 +72,104 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const logout = () => {
-    console.log("Logging out, keeping lastRole");
+    console.log("Logging out");
     setUser(null);
     localStorage.removeItem("token");
-    // Keep lastRole to handle redirection in ProtectedRoute
+    redirecting.current = false; // Reset le flag de redirection
   };
 
-  const checkAuthorization = (userData: any, role: string, userInfo: User) => {
-    console.log(`Checking authorization for role: ${role}, travail: ${userData.travail}, etatCompte: ${userData.etatCompte}`);
+  // Fonction pour rediriger selon le rôle et le statut
+  const handleBlockedUser = (userInfo: User, reason: string) => {
+    if (redirecting.current) return; // Éviter les redirections multiples
     
-    if (role === "intervention" && userData.travail !== "ENCOURS") {
-      console.log("Intervention user not ENCOURS, setting userEroner before logout");
-      localStorage.setItem("userEroner", JSON.stringify(userInfo));
-      // Forcer l'écriture dans localStorage
-      console.log("userEroner set to:", localStorage.getItem("userEroner"));
-      logout();
-      // Utiliser setTimeout pour s'assurer que localStorage est écrit
-      setTimeout(() => {
-        navigate("/blocked", { replace: true });
-      }, 100);
+    redirecting.current = true;
+    console.log(`User blocked: ${reason}. Redirecting ${userInfo.role}`);
+    
+    // Sauvegarder les infos utilisateur
+    localStorage.setItem("userEroner", JSON.stringify(userInfo));
+    localStorage.setItem("lastRole", userInfo.role);
+    
+    // Déconnecter l'utilisateur
+    setUser(null);
+    localStorage.removeItem("token");
+    
+    // Rediriger selon le rôle
+    const targetPath = userInfo.role === "client" ? "/blockedCit" : "/blocked";
+    console.log(`Redirecting to: ${targetPath}`);
+    
+    // Utiliser setTimeout pour s'assurer que l'état est bien mis à jour
+    setTimeout(() => {
+      navigate(targetPath, { replace: true });
+    }, 100);
+  };
+
+  const checkUserAuthorization = (userData: any, userInfo: User): boolean => {
+    console.log(`Checking authorization - Role: ${userInfo.role}, Travail: ${userData.travail}, EtatCompte: ${userData.etatCompte}`);
+    
+    // Vérification pour les utilisateurs intervention
+    if (userInfo.role === "intervention" && userData.travail !== "ENCOURS") {
+      handleBlockedUser(userInfo, `Intervention user not ENCOURS (${userData.travail})`);
       return false;
     }
     
-    if (role === "client" && userData.etatCompte !== "NON_BLOQUER") {
-      console.log("Client user not NON_BLOQUER, setting userEroner before logout");
-      localStorage.setItem("userEroner", JSON.stringify(userInfo));
-      // Forcer l'écriture dans localStorage
-      console.log("userEroner set to:", localStorage.getItem("userEroner"));
-      logout();
-      // Utiliser setTimeout pour s'assurer que localStorage est écrit
-      setTimeout(() => {
-        navigate("/blockedCit", { replace: true });
-      }, 100);
+    // Vérification pour les utilisateurs client (citoyen)
+    if (userInfo.role === "client" && userData.etatCompte !== "NON_BLOQUER") {
+      handleBlockedUser(userInfo, `Client user blocked (${userData.etatCompte})`);
       return false;
     }
     
     return true;
   };
 
+  // Fonction pour vérifier le statut utilisateur (utilisée dans useEffect et AuthGuard)
+  const checkUserStatus = async (userInfo: User): Promise<boolean> => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.log("No token found");
+        return false;
+      }
+
+      const response = await axios.get(`http://localhost:8080/api/utilisateur/${userInfo.email}`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const userData = response.data;
+      return checkUserAuthorization(userData, userInfo);
+    } catch (err: any) {
+      console.error("Error checking user status:", err);
+      if (err.response?.status === 401) {
+        logout();
+      }
+      return false;
+    }
+  };
+
   useEffect(() => {
-    const fetchUser = async () => {
+    const initializeAuth = async () => {
       try {
         setIsLoading(true);
         setError(null);
+        redirecting.current = false;
 
         const token = localStorage.getItem("token");
         if (!token) {
+          console.log("No token found, user not authenticated");
           setIsLoading(false);
           return;
         }
 
         const decoded = parseJwt(token);
-        console.log("Decoded JWT (useEffect):", decoded);
+        console.log("Decoded JWT:", decoded);
         const email = decoded.email || decoded.sub;
         if (!email) {
-          throw new Error("Aucun email ou sujet trouvé dans le JWT");
+          throw new Error("No email found in JWT");
         }
 
+        // Récupérer les données utilisateur depuis l'API
         const response = await axios.get(`http://localhost:8080/api/utilisateur/${email}`, {
           headers: {
             "Content-Type": "application/json",
@@ -138,7 +180,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const userData = response.data;
         const userRole = mapRoleToFrontend(decoded.role);
 
-        // Créer userInfo AVANT de vérifier l'autorisation
         const userInfo: User = {
           id: decoded.sub || "unknown",
           email: decoded.email || email,
@@ -148,33 +189,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           etatCompte: userData.etatCompte,
         };
 
-        // Maintenant appeler checkAuthorization avec les 3 paramètres
-        const isAuthorized = checkAuthorization(userData, userRole, userInfo);
+        console.log("User info created:", userInfo);
+
+        // Vérifier l'autorisation
+        const isAuthorized = checkUserAuthorization(userData, userInfo);
         if (!isAuthorized) {
+          console.log("User not authorized, redirection handled");
           return;
         }
 
+        // Utilisateur autorisé
         setUser(userInfo);
         localStorage.setItem("lastRole", userRole);
-        localStorage.setItem("userEroner", JSON.stringify(userInfo));
-        console.log("lastRole set to:", userRole);
-        console.log("userEroner set to:", userInfo);
+        console.log("User authenticated successfully");
       } catch (err: any) {
-        console.error("Erreur lors de la récupération de l'utilisateur:", err);
-        setError(err.message || "Échec de la récupération des données utilisateur");
+        console.error("Auth initialization error:", err);
+        setError(err.message || "Failed to initialize authentication");
         logout();
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchUser();
-  }, []);
+    initializeAuth();
+  }, [navigate]);
 
   const login = async (email: string, password: string): Promise<void> => {
     try {
       setIsLoading(true);
       setError(null);
+      redirecting.current = false;
 
       const response = await axios.post(
         "http://localhost:8080/api/auth/login",
@@ -182,7 +226,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         { headers: { "Content-Type": "application/json" } }
       );
 
-      console.log("Backend response:", response.data);
       const { token } = response.data;
       if (!token) {
         throw new Error("No token received from server");
@@ -190,7 +233,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       localStorage.setItem("token", token);
       const decoded = parseJwt(token);
-      console.log("Decoded JWT (login):", decoded);
 
       const userResponse = await axios.get(`http://localhost:8080/api/utilisateur/${decoded.email || decoded.sub}`, {
         headers: {
@@ -202,7 +244,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const userData = userResponse.data;
       const userRole = mapRoleToFrontend(decoded.role);
 
-      // Créer userInfo AVANT de vérifier l'autorisation
       const userInfo: User = {
         id: decoded.sub || "unknown",
         email: decoded.email || email,
@@ -212,20 +253,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         etatCompte: userData.etatCompte,
       };
 
-      // Maintenant appeler checkAuthorization avec les 3 paramètres
-      const isAuthorized = checkAuthorization(userData, userRole, userInfo);
+      // Vérifier l'autorisation
+      const isAuthorized = checkUserAuthorization(userData, userInfo);
       if (!isAuthorized) {
-        return;
+        return; // La redirection est gérée dans checkUserAuthorization
       }
 
       setUser(userInfo);
-      localStorage.setItem("userEroner", JSON.stringify(userInfo)); // Utiliser userInfo au lieu de user
+      localStorage.setItem("userEroner", JSON.stringify(userInfo));
       localStorage.setItem("lastRole", userRole);
-      console.log("lastRole set to:", userRole);
-      console.log("userEroner set to:", userInfo);
+      console.log("Login successful");
     } catch (err: any) {
       const errorMessage =
-        err.response?.data?.message || err.message || "Échec de la connexion";
+        err.response?.data?.message || err.message || "Login failed";
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -233,12 +273,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const authValues: AuthContextType = {
+  // Exposer checkUserStatus pour AuthGuard
+  const authValues: AuthContextType & { checkUserStatus?: (userInfo: User) => Promise<boolean> } = {
     user,
     login,
     logout,
     isLoading,
     error,
+    checkUserStatus,
   };
 
   return (
@@ -251,70 +293,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthGuard = ({ children }: { children: React.ReactNode }) => {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user, checkUserStatus } = useAuth() as any;
 
   useEffect(() => {
-    const checkUserStatus = async () => {
-      try {
-        if (!user) {
-          console.log("No user, checking token and lastRole");
-          const token = localStorage.getItem("token");
-          const lastRole = localStorage.getItem("lastRole");
-          console.log("Token:", !!token, "lastRole:", lastRole);
-          navigate(token ? "/" : lastRole === "client" ? "/blockedCit" : "/blocked", { replace: true });
-          return false;
-        }
+    if (!user) return;
 
-        const token = localStorage.getItem("token");
-        if (!token) {
-          console.log("No token, redirecting based on lastRole:", localStorage.getItem("lastRole"));
-          logout();
-          navigate(localStorage.getItem("lastRole") === "client" ? "/blockedCit" : "/blocked", { replace: true });
-          return false;
-        }
+    let intervalId: NodeJS.Timeout;
 
-        const response = await axios.get(`http://localhost:8080/api/utilisateur/${user.email}`, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        const userData = response.data;
-        console.log("User data:", userData);
-
-        if (user.role === "intervention" && userData.travail !== "ENCOURS") {
-          console.log("Intervention user not ENCOURS, redirecting to /blocked");
-          localStorage.setItem("userEroner", JSON.stringify(user)); // Sauvegarder avant logout
-          logout();
-          navigate("/blocked", { replace: true });
-          return false;
-        }
-
-        if (user.role === "client" && userData.etatCompte !== "NON_BLOQUER") {
-          console.log("Client user not NON_BLOQUER, redirecting to /blockedCit");
-          localStorage.setItem("userEroner", JSON.stringify(user)); // Sauvegarder avant logout
-          logout();
-          navigate("/blockedCit", { replace: true });
-          return false;
-        }
-
-        return true;
-      } catch (err: any) {
-        console.error("Erreur lors de la vérification du statut utilisateur:", err);
-        console.log("Error redirecting based on lastRole:", localStorage.getItem("lastRole"));
-        logout();
-        navigate(localStorage.getItem("lastRole") === "client" ? "/blockedCit" : "/blocked", { replace: true });
-        return false;
-      }
+    const periodicCheck = async () => {
+      console.log("AuthGuard: Checking user status periodically");
+      await checkUserStatus(user);
     };
 
-    checkUserStatus(); // Initial check
-    const interval = setInterval(checkUserStatus, 5000); // Check every 5 seconds
+    // Vérification initiale
+    periodicCheck();
 
-    return () => clearInterval(interval); // Cleanup on unmount
-  }, [user, logout, navigate]);
+    // Vérification périodique toutes les 5 secondes
+    intervalId = setInterval(periodicCheck, 5000);
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [user, checkUserStatus]);
 
   return <>{children}</>;
 };

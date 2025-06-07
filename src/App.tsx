@@ -15,13 +15,12 @@ const Blank = lazy(() => import("./pages/Blank"));
 const Home = lazy(() => import("./pages/Dashboard/Home"));
 const CitoyenHome = lazy(() => import("./pages/Dashboard/citoyen"));
 const BackupPage = lazy(() => import("./pages/Backup"));
-
 const Technicien = lazy(() => import("./pages/Forms/LesTechniciens"));
 const Intervention = lazy(() => import("./pages/Forms/Intervention"));
 const Table1 = lazy(() => import("./pages/Tables/Table1"));
 const Table2 = lazy(() => import("./pages/Tables/table2"));
 const Tabledirection = lazy(() => import("./pages/Tables/TableDirection"));
-const TabledirectionArch = lazy(() => import("./pages/Tables/tableDirectionArch"));
+const TabledirectionArchiv = lazy(() => import("./pages/Tables/tableDirectionArch"));
 const TableArchiverInt = lazy(() => import("./pages/LesRéclamationArchivInt"));
 const Chat = lazy(() => import("./pages/Chat/chat1"));
 const ReportGenerator = lazy(() => import("./pages/creerRapport"));
@@ -30,8 +29,6 @@ const ReclamationAllClient = lazy(() => import("./pages/toutRecCitoyen"));
 const AjouterPlainte = lazy(() => import("./pages/AjouterPlainte"));
 const MesPlaintes = lazy(() => import("./pages/mesPlainte"));
 const MesRefs = lazy(() => import("./pages/MesRef"));
-
-// UI Elements - lazy loaded
 const Videos = lazy(() => import("./pages/UiElements/Videos"));
 const Images = lazy(() => import("./pages/UiElements/Images"));
 const Alerts = lazy(() => import("./pages/UiElements/Alerts"));
@@ -58,15 +55,10 @@ const TableRecCitoyen = lazy(() => import("./pages/Tables/TableRecCitoyen"));
 const TableNonVerifPlainte = lazy(() => import("./pages/Tables/PlaintesNonVerif"));
 const TableVerifPlainte = lazy(() => import("./pages/Tables/PlaintesVerifier"));
 const PlainteDirection = lazy(() => import("./pages/plainteDirection"));
-
-// Layout
 const AppLayout = lazy(() => import("./layout/AppLayout"));
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import SfaxLightInterruptionRiskMap from "./pages/mapSfax";
-import TabledirectionArchiv from "./pages/Tables/tableDirectionArch";
 import MesRapportInt from "./pages/mesRapportPourInt";
-
-// New Blocked Pages
 const BlockedPage = lazy(() => import("./pages/Blockpage"));
 const BlockedPageCit = lazy(() => import("./pages/BlockCit"));
 
@@ -85,17 +77,12 @@ const ProtectedRoute = ({
   const { user, isLoading } = useAuth();
   
   if (isLoading) {
-    return <SignIn />;
+    return <div>Loading...</div>; // Afficher un loader pendant le chargement
   }
   
   if (!user) {
-    const token = localStorage.getItem("token");
-    const lastRole = localStorage.getItem("lastRole");
-    console.log("No user in ProtectedRoute, token:", !!token, "lastRole:", lastRole);
-    if (!token) {
-      return <Navigate to={lastRole === "client" ? "/blockedCit" : "/blocked"} replace />;
-    }
-    return <Navigate to="/" replace />;
+    console.log("No user in ProtectedRoute, redirecting to /login");
+    return <Navigate to="/login" replace />;
   }
   
   if (!allowedRoles.includes(user.role)) {
@@ -111,7 +98,7 @@ const AuthRoute = ({ children }: { children: JSX.Element }) => {
   const { user, isLoading } = useAuth();
   
   if (isLoading) {
-    return <SignIn />;
+    return <div>Loading...</div>; // Afficher un loader pendant le chargement
   }
   
   if (user) {
@@ -135,23 +122,24 @@ export default function App() {
       <Routes>
         {/* Auth Routes */}
         <Route path="/" element={<AuthRoute><SignIn /></AuthRoute>} />
+        <Route path="/login" element={<AuthRoute><SignIn /></AuthRoute>} />
         <Route path="/signup" element={<AuthRoute><SignUp /></AuthRoute>} />
         
         {/* Blocked Pages - Accessible to all */}
         <Route path="/blocked" element={
-          <Suspense fallback={<SignIn />}>
+          <Suspense fallback={<div>Loading...</div>}>
             <BlockedPage />
           </Suspense>
         } />
         <Route path="/blockedCit" element={
-          <Suspense fallback={<SignIn />}>
+          <Suspense fallback={<div>Loading...</div>}>
             <BlockedPageCit />
           </Suspense>
         } />
 
         {/* Protected Routes wrapped with AuthGuard */}
         <Route element={
-          <Suspense fallback={<SignIn />}>
+          <Suspense fallback={<div>Loading...</div>}>
             <AuthGuard>
               <AppLayout />
             </AuthGuard>

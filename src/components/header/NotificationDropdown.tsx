@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dropdown } from '../ui/dropdown/Dropdown';
 import { DropdownItem } from '../ui/dropdown/DropdownItem';
 import { Link } from 'react-router-dom';
 import { Client, Stomp } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import song from './alert.mp3';
+
 interface User {
   id: number;
   email: string;
@@ -34,7 +36,7 @@ interface ToastData {
 
 const NOTIFICATION_SOUNDS: Record<string, string> = {
   stuck_reclamation: song,
-  pending_report:song,
+  pending_report: song,
   material_shortage: song,
   new_reclamation: song,
   completed_reclamation: song,
@@ -46,12 +48,46 @@ const NOTIFICATION_SOUNDS: Record<string, string> = {
   default: song,
 };
 
-const CustomToast: React.FC<{
+interface CustomToastProps {
   notification: NotificationData;
   onClose: () => void;
   getNotificationIcon: (type: string) => string;
   formatTimestamp: (timestamp: string) => string;
-}> = ({ notification, onClose, getNotificationIcon, formatTimestamp }) => {
+  onNotificationClick: (notificationId: number) => void;
+}
+
+const CustomToast: React.FC<CustomToastProps> = ({
+  notification,
+  onClose,
+  getNotificationIcon,
+  formatTimestamp,
+  onNotificationClick,
+}) => {
+  const navigate = useNavigate();
+
+  const getNavigationPath = (type: string): string => {
+    const pathMap: Record<string, string> = {
+      stuck_reclamation: `/retardJour`,
+      pending_report: `/reportageDirection`,
+      material_shortage: `/matrieldirection`,
+      new_reclamation: `/effectuerréclamation`,
+      completed_reclamation: `/AjouterReclamation`,
+      problem_reclamation: `/AjouterReclamation`,
+      new_complaint: `/nonVerifPlainte`,
+      report_rejected: `/listeReportage`,
+      report_accepted: `/listeReportage`,
+      complaint_verified: `/mesPlaintes`,
+      default: '/notifications',
+    };
+    return pathMap[type] || pathMap.default;
+  };
+
+  const handleToastClick = () => {
+    onNotificationClick(notification.id);
+    navigate(getNavigationPath(notification.type));
+    onClose();
+  };
+
   const toastType =
     notification.type.includes('error') ||
     notification.type.includes('problem') ||
@@ -68,7 +104,7 @@ const CustomToast: React.FC<{
 
   return (
     <div
-      className={`relative flex items-start gap-3 p-4 mb-2 rounded-xl shadow-2xl border-l-4 animate-slide-in max-w-sm w-full transition-all duration-300 ${
+      className={`relative flex items-start gap-3 p-4 mb-2 rounded-xl shadow-2xl border-l-4 animate-slide-in max-w-sm w-full transition-all duration-300 cursor-pointer ${
         toastType === 'error'
           ? 'border-l-red-500 bg-red-50 dark:bg-red-950/20'
           : toastType === 'success'
@@ -78,6 +114,7 @@ const CustomToast: React.FC<{
           : 'border-l-blue-500 bg-blue-50 dark:bg-blue-950/20'
       }`}
       style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
+      onClick={handleToastClick}
     >
       <div
         className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-lg ${
@@ -98,7 +135,10 @@ const CustomToast: React.FC<{
             {notification.message}
           </p>
           <button
-            onClick={onClose}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
             className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
             aria-label="Fermer le toast"
           >
@@ -517,11 +557,11 @@ export default function NotificationDropdown(): JSX.Element {
           audioRef.current.pause();
           audioRef.current.currentTime = 0;
         }
-        const soundUrl = song; // Toujours utiliser alert.mp3
+        const soundUrl = song;
         console.log(`Attempting to play sound: ${soundUrl}`);
         const audio = new Audio(soundUrl);
         audioRef.current = audio;
-        audio.volume = 1.0; // Volume à 100% pour tester
+        audio.volume = 1.0;
         audio.play()
           .then(() => console.log(`Sound played successfully: ${soundUrl}`))
           .catch((err) => console.error(`Error playing sound ${soundUrl}:`, err));
@@ -630,7 +670,6 @@ export default function NotificationDropdown(): JSX.Element {
     console.log('Current notifications:', notifications);
   }, [notifications, showCustomToast, playNotificationSound]);
 
-  // Test du son au chargement
   useEffect(() => {
     console.log('Testing alert sound on component mount');
     playNotificationSound();
@@ -668,6 +707,7 @@ export default function NotificationDropdown(): JSX.Element {
             onClose={() => handleCloseToast(toast.id)}
             getNotificationIcon={getNotificationIcon}
             formatTimestamp={formatTimestamp}
+            onNotificationClick={handleNotificationClick}
           />
         ))}
       </div>
